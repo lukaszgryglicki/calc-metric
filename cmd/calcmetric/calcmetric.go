@@ -14,7 +14,13 @@ const (
 )
 
 var (
-	gRequired = []string{"PROJECT_SLUG"}
+	gRequired = []string{
+    "CONN",
+    "METRIC",
+    "TABLE",
+    "PROJECT_SLUG",
+    "TIME_RANGE",
+  }
 )
 
 func calcMetric() error {
