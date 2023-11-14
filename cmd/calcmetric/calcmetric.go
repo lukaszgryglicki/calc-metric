@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	_ "github.com/lib/pq" // As suggested by lib/pq driver
 	lib "github.com/lukaszgryglicki/calcmetric"
 )
@@ -26,17 +27,56 @@ var (
 	}
 )
 
-func isCalculated(table, timeRange string, env map[string]string, dtf, dtt time.Time) (bool, error) {
-	return false, nil
+func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[string]string, dtf, dtt time.Time) (bool, error) {
+	dtf = lib.DayStart(dtf)
+	dtt = lib.NextDayStart(dtt)
+	sql := fmt.Sprintf(
+		`select last_calculated_at from "%s" where time_range = $1 and date_from = $2 and date_to = $3`,
+		table,
+	)
+	args := []interface{}{timeRange, dtf, dtt}
+	if debug {
+		lib.Logf("executing sql: %s\nwith args: %+v\n", sql, args)
+	}
+	rows, err := db.Query(sql, args...)
+	if err != nil {
+		switch e := err.(type) {
+		case *pq.Error:
+			errName := e.Code.Name()
+			if errName == "undefined_table" {
+				if debug {
+					lib.Logf("table '%s' does not exist yet, so we need to calculate this metric.\n", table)
+				}
+				return false, nil
+			}
+			return false, err
+		default:
+			return false, err
+		}
+	}
+	defer func() { _ = rows.Close() }()
+	var lastCalc time.Time
+	for rows.Next() {
+		err := rows.Scan(&lastCalc)
+		if err != nil {
+			return false, err
+		}
+	}
+	err = rows.Err()
+	if err != nil {
+		return false, err
+	}
+	lib.Logf("table '%s' was last computed at %+v for (%s, %+v, %+v), so skipping calculation\n", table, lastCalc, timeRange, dtf, dtt)
+	return true, nil
 }
 
-func needsCalculation(table string, env map[string]string) (bool, error) {
+func needsCalculation(db *sql.DB, table string, debug bool, env map[string]string) (bool, error) {
 	_, ok := env["FORCE_CALC"]
 	if ok {
 		return true, nil
 	}
 	timeRange, _ := env["TIME_RANGE"]
-	switch timeRange {
+	switeh timeRange {
 	case "c":
 		dtFrom, ok := env["DATE_FROM"]
 		if !ok {
@@ -54,12 +94,12 @@ func needsCalculation(table string, env map[string]string) (bool, error) {
 		if err != nil {
 			return true, err
 		}
-		isCalculated, err := isCalculated(table, timeRange, env, dtf, dtt)
+		isCalc, err := isCalculated(db, table, timeRange, debug, env, dtf, dtt)
 		if err != nil {
 			return true, err
 		}
 		if 1 == 1 {
-			return !isCalculated, nil
+			return !isCalc, nil
 		}
 	default:
 		return true, fmt.Errorf("unknown time range: '%s'", timeRange)
@@ -103,7 +143,7 @@ func calcMetric() error {
 		lib.Logf("db: %+v\n", db)
 	}
 	table, _ := env["TABLE"]
-	needsCalc, err := needsCalculation(table, env)
+	needsCalc, err := needsCalculation(db, table, debug, env)
 	if err != nil {
 		return err
 	}
