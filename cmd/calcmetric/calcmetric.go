@@ -56,19 +56,116 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 		}
 	}
 	defer func() { _ = rows.Close() }()
-	var lastCalc time.Time
+	var (
+		lastCalc time.Time
+		fetched  bool
+	)
 	for rows.Next() {
 		err := rows.Scan(&lastCalc)
 		if err != nil {
 			return false, err
 		}
+		fetched = true
 	}
 	err = rows.Err()
 	if err != nil {
 		return false, err
 	}
-	lib.Logf("table '%s' was last computed at %+v for (%s, %+v, %+v), so skipping calculation\n", table, lastCalc, timeRange, dtf, dtt)
-	return true, nil
+	if fetched {
+		lib.Logf("table '%s' was last computed at %+v for (%s, %+v, %+v), so skipping calculation\n", table, lastCalc, timeRange, dtf, dtt)
+		return true, nil
+	}
+	lib.Logf("table '%s' present, but it needs calculation for (%s, %+v, %+v)\n", table, timeRange, dtf, dtt)
+	return false, nil
+}
+
+func dbTypeName(column *sql.ColumnType) (string, error) {
+	name := strings.ToLower(column.DatabaseTypeName())
+	switch name {
+	case "text":
+		return name, nil
+	case "varchar":
+		return "text", nil
+	case "int8", "int16", "int32", "int64":
+		return "bigint", nil
+	default:
+		return "error", fmt.Errorf("unknown type: '%s' in %+v", name, column)
+	}
+}
+
+func calculate(db *sql.DB, sql, table string, debug bool, env map[string]string) error {
+	rows, err := db.Query(sql)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	columns, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+	if debug {
+		lib.Logf("columns: %+v\n", columns)
+	}
+	createTable := fmt.Sprintf(`
+create table if not exists "%s"(
+  time_range varchar(6) not null,
+  project_slug varchar(6) not null,
+  last_calculated_at timestamp not null,
+  date_from date not null,
+  date_to date not null,
+  row_number int not null,
+`,
+		table,
+	)
+	l := len(columns) - 1
+	for i, column := range columns {
+		tp, err := dbTypeName(column)
+		if err != nil {
+			return err
+		}
+		createTable += fmt.Sprintf(`  %s %s`, column.Name(), tp)
+		nullable, ok := column.Nullable()
+		if ok && !nullable {
+			createTable += ` not null`
+		}
+		if i < l {
+			createTable += ",\n"
+		} else {
+			createTable += "\n);\n"
+		}
+	}
+	createTable += fmt.Sprintf(`
+create index if not exists "%s_time_range_idx" on "%s"(time_range);
+create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
+`,
+		table,
+		table,
+		table,
+		table,
+	)
+	if debug {
+		lib.Logf("create table:\n%s\n", createTable)
+	}
+	res, err := db.Exec(sql)
+	if err != nil {
+		return err
+	}
+	if debug {
+		lib.Logf("result: %+v\n", res)
+	}
+	/*
+		for rows.Next() {
+			err := rows.Scan(&lastCalc)
+			if err != nil {
+				return false, err
+			}
+		}
+	*/
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func currentTimeRange(timeRange string, debug bool, env map[string]string) (time.Time, time.Time) {
@@ -297,12 +394,10 @@ func calcMetric() error {
 	if debug {
 		lib.Logf("generated SQL:\n%s\n", sql)
 	}
-	/*
-		needsCalc, err := calculate(db, sql, table, debug, env)
-		if err != nil {
-			return err
-		}
-	*/
+	err = calculate(db, sql, table, debug, env)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

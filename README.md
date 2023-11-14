@@ -52,6 +52,8 @@ Generated tables:
   - `time_range` - it will be the value passed in `V3_TIME_RANGE`.
   - `last_calculated_at` - will store the value when this table was last calculated.
   - `date_from`, `date_to` - will have time from and time to values for which a given records were calcualted.
+  - `project_slug` - will have `V3_PROJECT_SLUG` value.
+  - `row_number` - as returned from the SQL query.
 
 
 # Running all calculations
