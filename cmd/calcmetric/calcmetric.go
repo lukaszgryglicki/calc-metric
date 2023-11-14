@@ -29,7 +29,8 @@ var (
 
 func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[string]string, dtf, dtt time.Time) (bool, error) {
 	dtf = lib.DayStart(dtf)
-	dtt = lib.NextDayStart(dtt)
+	// dtt = lib.NextDayStart(dtt)
+	dtt = lib.DayStart(dtt)
 	sql := fmt.Sprintf(
 		`select last_calculated_at from "%s" where time_range = $1 and date_from = $2 and date_to = $3`,
 		table,
@@ -70,13 +71,41 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 	return true, nil
 }
 
+func currentTimeRange(timeRange string, debug bool, env map[string]string) (time.Time, time.Time) {
+	now := time.Now()
+	dtf, dtt := now, now
+	switch timeRange {
+	case "7d", "7dp":
+		_, daily := env["V3_CALC_WEEK_DAILY"]
+		if daily {
+			dtt = lib.DayStart(now)
+			dtf = dtt.AddDate(0, 0, -7)
+		} else {
+			dtt = lib.WeekStart(now)
+			dtf = dtt.AddDate(0, 0, -7)
+		}
+		if timeRange == "7dp" {
+			dtf = dtf.AddDate(0, 0, -7)
+			dtt = dtt.AddDate(0, 0, -7)
+		}
+	}
+	return dtf, dtt
+}
+
 func needsCalculation(db *sql.DB, table string, debug bool, env map[string]string) (bool, error) {
 	_, ok := env["FORCE_CALC"]
 	if ok {
 		return true, nil
 	}
 	timeRange, _ := env["TIME_RANGE"]
-	switeh timeRange {
+	switch timeRange {
+	case "7d", "7dp", "30d", "30dp", "q", "qp", "ty", "typ", "y", "yp", "2y", "2yp", "a":
+		dtf, dtt := currentTimeRange(timeRange, debug, env)
+		isCalc, err := isCalculated(db, table, timeRange, debug, env, dtf, dtt)
+		if err != nil {
+			return true, err
+		}
+		return !isCalc, nil
 	case "c":
 		dtFrom, ok := env["DATE_FROM"]
 		if !ok {
@@ -98,13 +127,10 @@ func needsCalculation(db *sql.DB, table string, debug bool, env map[string]strin
 		if err != nil {
 			return true, err
 		}
-		if 1 == 1 {
-			return !isCalc, nil
-		}
+		return !isCalc, nil
 	default:
 		return true, fmt.Errorf("unknown time range: '%s'", timeRange)
 	}
-	return true, nil
 }
 
 func calcMetric() error {

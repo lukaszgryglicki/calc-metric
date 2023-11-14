@@ -47,6 +47,21 @@ func NextDayStart(dt time.Time) time.Time {
 	return DayStart(dt).AddDate(0, 0, 1)
 }
 
+// PrevDayStart - return time rounded to prev day start
+func PrevDayStart(dt time.Time) time.Time {
+	return DayStart(dt).AddDate(0, 0, -1)
+}
+
+// WeekStart - return time rounded to current week start
+// Assumes first week day is Sunday
+func WeekStart(dt time.Time) time.Time {
+	wDay := int(dt.Weekday())
+	// Go returns negative numbers for `modulo` operation when argument is negative
+	// So instead of wDay-1 I'm using wDay+6
+	subDays := (wDay + 6) % 7
+	return DayStart(dt).AddDate(0, 0, -subDays)
+}
+
 // ToYMDHMS - return time formatted as YYYY-MM-DD HH:MI:SS
 func ToYMDHMS(dt time.Time) string {
 	return fmt.Sprintf("%04d-%02d-%02d %02d:%02d:%02d", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second())
