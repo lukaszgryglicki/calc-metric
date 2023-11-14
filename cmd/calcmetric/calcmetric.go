@@ -147,6 +147,34 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 				dtt = dtt.AddDate(-1, 0, 0)
 			}
 		}
+	case "2y", "2yp":
+		_, daily := env["CALC_YEAR2_DAILY"]
+		if daily {
+			dtt = lib.DayStart(now)
+			dtf = dtt.AddDate(-2, 0, 0)
+			if timeRange == "2yp" {
+				dtf = dtf.AddDate(-2, 0, 0)
+				dtt = dtt.AddDate(-2, 0, 0)
+			}
+		} else {
+			dtt = lib.YearStart(now)
+			if now.Year()%2 == 1 {
+				dtt = dtt.AddDate(-1, 0, 0)
+			}
+			dtf = dtt.AddDate(-2, 0, 0)
+			if timeRange == "2yp" {
+				dtf = dtf.AddDate(-2, 0, 0)
+				dtt = dtt.AddDate(-2, 0, 0)
+			}
+		}
+	case "a":
+		dtt, _ = lib.TimeParseAny("2100")
+		dtf, _ = lib.TimeParseAny("1970")
+		if timeRange == "typ" {
+			diff := dtt.Sub(dtf)
+			dtf = dtf.Add(-diff)
+			dtt = dtt.Add(-diff)
+		}
 	}
 	return dtf, dtt
 }
