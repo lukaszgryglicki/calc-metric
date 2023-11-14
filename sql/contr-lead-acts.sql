@@ -29,12 +29,13 @@ where
   and a.deletedAt is null
   and a.timestamp >= {{date_from}}
   and a.timestamp < {{date_to}}
+  and m.is_bot {{is_bot}}
   and p.project_slug = '{{project_slug}}'
 group by
   1, 2, 3, 4
 order by
   5 desc
-limit
-  {{limit}}
-offset
-  {{offset}}
+-- limit
+--   {{limit}}
+-- offset
+--   {{offset}}

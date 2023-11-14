@@ -45,9 +45,7 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 		case *pq.Error:
 			errName := e.Code.Name()
 			if errName == "undefined_table" {
-				if debug {
-					lib.Logf("table '%s' does not exist yet, so we need to calculate this metric.\n", table)
-				}
+				lib.Logf("table '%s' does not exist yet, so we need to calculate this metric.\n", table)
 				return false, nil
 			}
 			return false, err
@@ -168,6 +166,7 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 	queryRoot := fmt.Sprintf(`insert into "%s"(time_range, project_slug, last_calculated_at, date_from, date_to, row_number, `, table)
 	query := ""
 	args := []interface{}{}
+	batches := 0
 	for rows.Next() {
 		err := rows.Scan(pValues...)
 		if err != nil {
@@ -215,6 +214,7 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 			query = ""
 			args = []interface{}{}
 			p = 0
+			batches++
 		}
 	}
 	if len(args) > 0 {
@@ -228,7 +228,9 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 		if err != nil {
 			return err
 		}
+		batches++
 	}
+	lib.Logf("completed in %d batches\n", batches)
 	return nil
 }
 
@@ -337,6 +339,7 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 			dtt = dtt.Add(-diff)
 		}
 	}
+	lib.Logf("checking for time range %s - %s\n", lib.ToYMDQuoted(dtf), lib.ToYMDQuoted(dtt))
 	return dtf, dtt
 }
 
@@ -404,7 +407,7 @@ func calcMetric() error {
 		_, ok := env[key]
 		if !ok {
 			msg := fmt.Sprintf("you must define %s%s environment variable to run this", gPrefix, key)
-			lib.Logf("%s\n", msg)
+			lib.Logf("env: %s\n", msg)
 			err := fmt.Errorf("%s", msg)
 			return err
 		}
@@ -485,5 +488,5 @@ func main() {
 		lib.Logf("calcMetric error: %+v\n", err)
 	}
 	dtEnd := time.Now()
-	lib.Logf("Time: %v\n", dtEnd.Sub(dtStart))
+	lib.Logf("time: %v\n", dtEnd.Sub(dtStart))
 }

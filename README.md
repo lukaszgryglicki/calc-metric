@@ -4,11 +4,11 @@ This program is used to calculate a metrc and save its values to a dedicated tab
 
 You specify environment variables starting with `V3_` prefix to specify which metric shoudl be calculated.
 
-Those are mandatory parameters that must be specified:
+Those are mandatory parameters that must be specified, see example sin `calcmetric.sh` file:
 
 - `V3_CONN` - database connect string.
-- `V3_METRIC` - metric name, it will correspond to its SQL file in `sql/metric.sql`.
-- `V3_TABLE` - table name where calculations will be stored. Example: `leaderboard`.
+- `V3_METRIC` - metric name, for example `contr-lead-acts` it will correspond to its SQL file in `sql/contr-lead-acts.sql`.
+- `V3_TABLE` - table name where calculations will be stored. Example: `metric_contr_lead_acts`.
 - `V3_PROJECT_SLUG` - specifies project slug to calculate, example: `korg`.
 - `V3_TIME_RANGE` - time range to calculate for, allowed values: `7d`, `30d`, `q`, `ty`, `y`, `2y`, `a`, `c`, they mean:
   - `7d` - last week (Mon-Sun, calculated on Mondays or if not calculated yet). *Or we can calculate this every day* if `V3_CALC_WEEK_DAILY` is set.
@@ -44,7 +44,7 @@ Those are mandatory parameters that must be specified:
 # Running
 
 Example:
-- `V3_CONN=[redacted] ./calcparams.sh` - this runs example calculation, or: `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``.
+- `V3_CONN=[redacted] ./calcmetric.sh` - this runs example calculation, or: `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``.
 
 
 Generated tables:
