@@ -122,11 +122,33 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 				dtt = dtt.AddDate(0, -3, 0)
 			}
 		}
+	case "ty", "typ":
+		dtt = lib.DayStart(now)
+		dtf = lib.YearStart(now)
+		if timeRange == "typ" {
+			diff := dtt.Sub(dtf)
+			dtf = dtf.Add(-diff)
+			dtt = dtt.Add(-diff)
+		}
+	case "y", "yp":
+		_, daily := env["CALC_YEAR_DAILY"]
+		if daily {
+			dtt = lib.DayStart(now)
+			dtf = dtt.AddDate(-1, 0, 0)
+			if timeRange == "yp" {
+				dtf = dtf.AddDate(-1, 0, 0)
+				dtt = dtt.AddDate(-1, 0, 0)
+			}
+		} else {
+			dtt = lib.YearStart(now)
+			dtf = dtt.AddDate(-1, 0, 0)
+			if timeRange == "yp" {
+				dtf = dtf.AddDate(-1, 0, 0)
+				dtt = dtt.AddDate(-1, 0, 0)
+			}
+		}
 	}
 	return dtf, dtt
-	// diff := dtt.Sub(dtf)
-	// dtf = dtf.Add(-diff)
-	// dtt = dtt.Add(-diff)
 }
 
 func needsCalculation(db *sql.DB, table string, debug bool, env map[string]string) (bool, error) {

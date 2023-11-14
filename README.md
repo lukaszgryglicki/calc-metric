@@ -19,17 +19,19 @@ Those are mandatory parameters that must be specified:
   - `qp` - previous quarter (calculated only 1st day of a new quarter or if not calculated yet).
   - `ty` - this year (calculated daily) this is from this year 1st of January till today.
   - `typ` - previous periof for this year (if today is 200th day of year then this is 1st of January this year minus 200 days till 1st of January this year).
-  - `y` - last year (calculated daily).
-  - `yp` - previous year (2 years ago until 1 year ago).
-  - `2y` - last 2 years (calculated daily).
-  - `2yp` - previous 2 years (4 years ago until 2 years ago).
+  - `y` - last year (calculated only 1st day of a new year or if not calculated yet). *Or we can calculate this every day* if `V3_CALC_YEAR_DAILY` is set.
+  - `yp` - previous year (calculated only 1st day of a new year or if not calculated yet).
+  - `2y` - 2 last years (calculated only 1st day of a new 2 years or if not calculated yet). *Or we can calculate this every day* if `V3_CALC_YEAR2_DAILY` is set.
+  - `2yp` - 2 previous years (calculated only 1st day of a new 2 years or if not calculated yet).
   - `a` - all time (no time filter or 1970-01-01 - 2100-01-01) - calculated daily. Note that there is no `ap` as it makes no sense.
   - `c` - custom time range - from `V3_DATE_FROM` to `V3_DATE_TO`, calculated on request.
 - `V3_CALC_WEEK_DAILY` - if this is set, we calculate `7d` and `7dp` every day, instead of Mondays.
 - `V3_CALC_MONTH_DAILY` - if this is set, we calculate `30d` and `30dp` every day, instead of 1st days of months.
 - `V3_CALC_QUARTER_DAILY` - if this is set, we calculate `q` and `qp` every day, instead of 1st days of quarters.
-- `V3_DATE_FROM` - if `c` date range is used - thsi is a starting datetime. Format is YYYY-MM-DD. If you specify 'YYYY-MM-DD HH:MI:SS' it will truncate to 'YYYY MM-DD 00:00:00.000' - max resolution is daily.
-- `V3_DATE_TO` - if `c` date range is used - thsi is an ending datetime. Format is YYYY-MM-DD.
+- `V3_CALC_YEAR_DAILY` - if this is set, we calculate `y` and `yp` every day, instead of 1st days of years.
+- `V3_CALC_YEAR2_DAILY` - if this is set, we calculate `2y` and `2yp` every day, instead of 1st days of every 2 years.
+- `V3_DATE_FROM` - if `c` date range is used - this is a starting datetime. Format is YYYY-MM-DD. If you specify 'YYYY-MM-DD HH:MI:SS' it will truncate to 'YYYY MM-DD 00:00:00.000' - max resolution is daily.
+- `V3_DATE_TO` - if `c` date range is used - this is an ending datetime. Format is YYYY-MM-DD.
 - `V3_FORCE_CALC` - if set, then we don't check if given time range is already calculated.
 - `V3_LIMIT` - limit rows to this value.
 - `V3_OFFSET` - offset from this value.
