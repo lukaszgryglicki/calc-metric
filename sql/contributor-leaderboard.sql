@@ -3,7 +3,7 @@ select
   a.memberId,
   a.platform,
   a.username,
-  count(distinct case where a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit','co-authored-commit') then a.sourceParentId else a.id::text end) as contributions
+  count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit','co-authored-commit') then a.sourceParentId else a.id::text end) as contributions
 from
   activities a
 join

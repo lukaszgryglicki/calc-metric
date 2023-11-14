@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -59,6 +60,32 @@ func calcMetric() error {
 	}
 	if debug {
 		lib.Logf("db: %+v\n", db)
+	}
+	metric, _ := env["METRIC"]
+	path, ok := env["PATH"]
+	if !ok {
+		path = "./sql/"
+	}
+	fn := path + metric + ".sql"
+	contents, err := ioutil.ReadFile(fn)
+	if err != nil {
+		return err
+	}
+	sql := string(contents)
+	projectSlug, _ := env["PROJECT_SLUG"]
+	sql = strings.Replace(sql, "{{project_slug}}", projectSlug, -1)
+	limit, _ := env["LIMIT"]
+	sql = strings.Replace(sql, "{{limit}}", limit, -1)
+	offset, _ := env["OFFSET"]
+	sql = strings.Replace(sql, "{{offset}}", offset, -1)
+	for k, v := range env {
+		if strings.HasPrefix(k, "PARAM_") {
+			n := k[6:]
+			sql = strings.Replace(sql, "{{"+n+"}}", v, -1)
+		}
+	}
+	if debug {
+		lib.Logf("generated SQL:\n%s\n", sql)
 	}
 	return nil
 }
