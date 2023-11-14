@@ -14,7 +14,7 @@ export V3_PARAM_is_bot='!= true'
 # export V3_TABLE=metric_contr_lead_acts_total
 # export V3_TIME_RANGE=c
 # export V3_TIME_RANGE=7d
-# export V3_PARAM_is_bot=' in (true, false)'
+# export V3_PARAM_is_bot='in (true, false)'
 # export V3_LIMIT=20
 # export V3_OFFSET=0
 # export V3_PATH='./sql/'

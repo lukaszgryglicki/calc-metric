@@ -1,6 +1,44 @@
 ---
 metrics:
-  contr_lead_acts:
+  contr_lead_acts_non_bots:
     metric: contr-lead-acts
-    table: metric_contr_lead_acts
-
+    table: metric_contr_lead_acts_non_bot
+    project_slugs: all
+    time_ranges: all
+    extra_params:
+      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
+      is_bot: '!= true'
+  contr_lead_acts_with_bots:
+    metric: contr-lead-acts
+    table: metric_contr_lead_acts_with_bots
+    project_slugs: "sql: select distinct project_slug from mv_subprojects where project_slug in ('cncf', 'envoy', 'ptproject')"
+    time_ranges: '7d,30d,7dp,30dp'
+    extra_params:
+      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
+      is_bot: 'in (true, false)'
+  contr_lead_acts_total:
+    metric: contr-lead-acts-total
+    table: metric_contr_lead_acts_total
+    project_slugs: 'envoy,cncf,ptproject'
+    time_ranges: '7d,30d,q,y,2y'
+    extra_params:
+      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
+      is_bot: '!= true'
+    extra_env:
+      V3_CALC_WEEK_DAILY: y
+      V3_CALC_MONTH_DAILY: y
+      V3_CALC_QUARTER_DAILY: y
+      V3_CALC_YEAR_DAILY: y
+      V3_CALC_YEAR2_DAILY: y
+  contr_lead_acts_total_custom:
+    metric: contr-lead-acts-total
+    table: metric_contr_lead_acts_total
+    project_slugs: 'envoy,cncf,ptproject'
+    time_ranges: c
+    extra_params:
+      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
+      is_bot: '!= true'
+    extra_env:
+      V3_DATE_FROM: '2023-10'
+      V3_DATE_TO: '2023-11'
+      V3_DEBUG: y
