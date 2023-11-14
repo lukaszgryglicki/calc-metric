@@ -38,6 +38,7 @@ Those are mandatory parameters that must be specified, see example sin `calcmetr
 - `V3_DEBUG` - set debug mode.
 - `V3_DROP` - drop destination table if exists. This is to support data cleanup.
 - `V3_PATH` - path to metric SQL files, `./sql/` if not specified.
+- `V3_SYNC_PATH` - path to where `calculations.yaml` is, `./` if not specified.
 - `V3_PARAM_xyz` - extra params to replace in `SQL` file, for example specifying `V3_PARAM_my_param=my_value` will replace `{{my_param}}` with `my_value` in metric's SQL file.
 
 
@@ -61,4 +62,7 @@ Generated tables:
 
 There is a file `calculations.yaml` that specifies all metrics that needs to be calculated, it runs in a loop and checks every single metric and eventually regenerates it if needed.
 
-Each entry in this file is a single invocation of `calcmetric` program. This is handles by `sync` program that will be written to handle this [TODO].
+Each entry in this file is a single invocation of `calcmetric` program. This is handles by `sync` program that will be written to handle this.
+
+Example run:
+- `V3_CONN=[redacted] ./sync.sh` - this runs example sync, or: `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``.

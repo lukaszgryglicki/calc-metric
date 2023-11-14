@@ -1,0 +1,6 @@
+---
+metrics:
+  contr_lead_acts:
+    metric: contr-lead-acts
+    table: metric_contr_lead_acts
+

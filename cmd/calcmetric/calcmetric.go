@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	_ "github.com/lib/pq" // As suggested by lib/pq driver
 	lib "github.com/lukaszgryglicki/calcmetric"
 )
 

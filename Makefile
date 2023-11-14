@@ -1,6 +1,6 @@
 GO_LIB_FILES=log.go time.go
-GO_BIN_FILES=cmd/calcmetric/calcmetric.go
-GO_BIN_CMDS=github.com/lukaszgryglicki/calcmetric
+GO_BIN_FILES=cmd/calcmetric/calcmetric.go cmd/sync/sync.go
+GO_BIN_CMDS=github.com/lukaszgryglicki/calcmetric hithub.com/lukaszgryglicki/sync
 GO_ENV=CGO_ENABLED=0
 GO_BUILD=go build -ldflags '-s -w'
 GO_INSTALL=go install -ldflags '-s'
@@ -10,13 +10,16 @@ GO_VET=go vet
 GO_CONST=goconst
 GO_IMPORTS=goimports -w
 GO_USEDEXPORTS=usedexports
-BINARIES=calcmetric
+BINARIES=calcmetric sync
 STRIP=strip
 
 all: check ${BINARIES}
 
 calcmetric: cmd/calcmetric/calcmetric.go ${GO_LIB_FILES}
 	 ${GO_ENV} ${GO_BUILD} -o calcmetric cmd/calcmetric/calcmetric.go
+
+sync: cmd/sync/sync.go ${GO_LIB_FILES}
+	 ${GO_ENV} ${GO_BUILD} -o sync cmd/sync/sync.go
 
 fmt: ${GO_BIN_FILES} ${GO_LIB_FILES}
 	./for_each_go_file.sh "${GO_FMT}"
