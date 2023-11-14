@@ -4,7 +4,7 @@ This program is used to calculate a metrc and save its values to a dedicated tab
 
 You specify environment variables starting with `V3_` prefix to specify which metric shoudl be calculated.
 
-Those are mandatory parameters that must be specified, see example sin `calcmetric.sh` file:
+Those are mandatory parameters that must be specified, see examples in `calcmetric.sh` file:
 
 - `V3_CONN` - database connect string.
 - `V3_METRIC` - metric name, for example `contr-lead-acts` it will correspond to its SQL file in `sql/contr-lead-acts.sql`.
@@ -36,6 +36,7 @@ Those are mandatory parameters that must be specified, see example sin `calcmetr
 - `V3_LIMIT` - limit rows to this value.
 - `V3_OFFSET` - offset from this value.
 - `V3_DEBUG` - set debug mode.
+- `V3_PPT` - `Per-Project-Tables` - meas - create tables with `_project_slug` added to their name, we can consider using this for speedup.
 - `V3_DROP` - drop destination table if exists. This is to support data cleanup.
 - `V3_PATH` - path to metric SQL files, `./sql/` if not specified.
 - `V3_PARAM_xyz` - extra params to replace in `SQL` file, for example specifying `V3_PARAM_my_param=my_value` will replace `{{my_param}}` with `my_value` in metric's SQL file.

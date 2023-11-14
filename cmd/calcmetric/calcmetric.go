@@ -90,7 +90,7 @@ func dbTypeName(column *sql.ColumnType) (string, error) {
 	}
 }
 
-func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo string, debug bool, env map[string]string) error {
+func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo string, ppt, debug bool, env map[string]string) error {
 	rows, err := db.Query(sqlQuery)
 	if err != nil {
 		return err
@@ -139,13 +139,18 @@ create table if not exists "%s"(
 	}
 	createTable += fmt.Sprintf(`
 create index if not exists "%s_time_range_idx" on "%s"(time_range);
-create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 `,
 		table,
 		table,
-		table,
-		table,
 	)
+	if !ppt {
+		createTable += fmt.Sprintf(`
+create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
+`,
+			table,
+			table,
+		)
+	}
 	if debug {
 		lib.Logf("create table:\n%s\n", createTable)
 	}
@@ -436,6 +441,12 @@ func calcMetric() error {
 			return err
 		}
 	}
+	projectSlug, _ := env["PROJECT_SLUG"]
+	// Per Project Tables
+	_, ppt := env["PPT"]
+	if ppt {
+		table += "_" + projectSlug
+	}
 	needsCalc, dtf, dtt, err := needsCalculation(db, table, debug, env)
 	if err != nil {
 		return err
@@ -457,7 +468,6 @@ func calcMetric() error {
 		return err
 	}
 	sql := string(contents)
-	projectSlug, _ := env["PROJECT_SLUG"]
 	sql = strings.Replace(sql, "{{project_slug}}", projectSlug, -1)
 	limit, _ := env["LIMIT"]
 	sql = strings.Replace(sql, "{{limit}}", limit, -1)
@@ -477,7 +487,7 @@ func calcMetric() error {
 		lib.Logf("generated SQL:\n%s\n", sql)
 	}
 	timeRange, _ := env["TIME_RANGE"]
-	err = calculate(db, sql, table, projectSlug, timeRange, dtfs, dtts, debug, env)
+	err = calculate(db, sql, table, projectSlug, timeRange, dtfs, dtts, ppt, debug, env)
 	if err != nil {
 		return err
 	}
