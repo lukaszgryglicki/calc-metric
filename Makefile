@@ -1,5 +1,6 @@
-GO_BIN_FILES=cmd/calc_metric/calc_metric.go
-GO_BIN_CMDS=github.com/lukaszgryglicki/calc_metric
+GO_LIB_FILES=log.go time.go
+GO_BIN_FILES=cmd/calcmetric/calcmetric.go
+GO_BIN_CMDS=github.com/lukaszgryglicki/calcmetric
 GO_ENV=CGO_ENABLED=0
 GO_BUILD=go build -ldflags '-s -w'
 GO_INSTALL=go install -ldflags '-s'
@@ -9,37 +10,33 @@ GO_VET=go vet
 GO_CONST=goconst
 GO_IMPORTS=goimports -w
 GO_USEDEXPORTS=usedexports
-GO_ERRCHECK=errcheck -asserts -ignore '[FS]?[Pp]rint*'
-BINARIES=calc_metric
+BINARIES=calcmetric
 STRIP=strip
 
 all: check ${BINARIES}
 
-calc_metric: cmd/calc_metric/calc_metric.go
-	 ${GO_ENV} ${GO_BUILD} -o calc_metric cmd/calc_metrc/calc_metric.go
+calcmetric: cmd/calcmetric/calcmetric.go ${GO_LIB_FILES}
+	 ${GO_ENV} ${GO_BUILD} -o calcmetric cmd/calcmetric/calcmetric.go
 
-fmt: ${GO_BIN_FILES}
+fmt: ${GO_BIN_FILES} ${GO_LIB_FILES}
 	./for_each_go_file.sh "${GO_FMT}"
 
-lint: ${GO_BIN_FILES}
+lint: ${GO_BIN_FILES} ${GO_LIB_FILES}
 	./for_each_go_file.sh "${GO_LINT}"
 
-vet: ${GO_BIN_FILES}
-	./for_each_go_file.sh "${GO_VET}"
+vet: ${GO_BIN_FILES} ${GO_LIB_FILES}
+	./vet_files.sh "${GO_VET}"
 
-imports: ${GO_BIN_FILES}
+imports: ${GO_BIN_FILES} ${GO_LIB_FILES}
 	./for_each_go_file.sh "${GO_IMPORTS}"
 
-const: ${GO_BIN_FILES}
+const: ${GO_BIN_FILES} ${GO_LIB_FILES}
 	${GO_CONST} ./...
 
-usedexports: ${GO_BIN_FILES}
+usedexports: ${GO_BIN_FILES} ${GO_LIB_FILES}
 	${GO_USEDEXPORTS} ./...
 
-errcheck: ${GO_BIN_FILES}
-	${GO_ERRCHECK} ./...
-
-check: fmt lint imports vet usedexports errcheck
+check: fmt lint imports vet usedexports
 
 install: check ${BINARIES}
 	${GO_INSTALL} ${GO_BIN_CMDS}

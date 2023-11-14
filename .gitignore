@@ -22,5 +22,6 @@ go.work
 
 
 # LG
-/*.sw*
+*.sw*
 /go.sum
+/calcmetric
