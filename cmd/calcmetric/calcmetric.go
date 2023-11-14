@@ -229,6 +229,10 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 		}
 		batches++
 	}
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
 	lib.Logf("completed in %d batches\n", batches)
 	return nil
 }

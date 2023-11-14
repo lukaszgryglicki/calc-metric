@@ -35,11 +35,118 @@ type Metric struct {
 	Table  string `yaml:"table"`  // Maps to V3_TABLE
 	// Can be overwritten with V3_PROJECT_SLUGS env variable
 	// Can also use "all" which connects to DB and gets all slugs using built-in SQL command
-	ProjectSlugs string `yaml:"project_slugs"` // Comma separated list of V3_PROJECT_SLUG values, can also be SQL like `sql: "select distinct project_slug from mv_subprojects"`
+	ProjectSlugs string `yaml:"project_slugs"` // Comma separated list of V3_PROJECT_SLUG values, can also be SQL like `"sql:select distinct project_slug from mv_subprojects"`
 	// Can be overwritten with V3_TIME_RANGES env variable
 	TimeRanges  string            `yaml:"time_ranges"`  // Comma separated list of time ranges (V3_TIME_RANGE) to calculate or "all" which means all supported time ranges
 	ExtraParams map[string]string `yaml:"extra_params"` // map k:v with `V3_PARAM_` prefix skipped in keys, for example: tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'", is_bot='!= true'
 	ExtraEnv    map[string]string `yaml:"extra_env"`    // map k:v with `V3_` prefix skipped in keys, for example: DEBG=1 DATE_FROM=2023-10-01 DATE_TO=2023-11-01
+}
+
+func getQuerySlugs(db *sql.DB, debug bool, query string) ([]string, error) {
+	slug, slugs := "", []string{}
+	if debug {
+		lib.Logf("executing the following query to get slugs:\n%s\n", query)
+	}
+	rows, err := db.Query(query)
+	if err != nil {
+		return slugs, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		err := rows.Scan(&slug)
+		if err != nil {
+			return slugs, err
+		}
+		slugs = append(slugs, slug)
+	}
+	err = rows.Err()
+	if err != nil {
+		return slugs, err
+	}
+	return slugs, nil
+}
+
+func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) error {
+	path, ok := env["CALC_PATH"]
+	if !ok {
+		path = "./"
+	}
+	calcBin := path + "calcmetric"
+	if debug {
+		lib.Logf("will use '%s' binary to calculate metrics\n", calcBin)
+	}
+	allTasks := []map[string]string{}
+	for _, taskDef := range metrics.Metrics {
+		task := make(map[string]string)
+		// Basics
+		task[gPrefix+"METRIC"] = taskDef.Metric
+		task[gPrefix+"TABLE"] = taskDef.Table
+
+		// Slugs
+		slugs := taskDef.ProjectSlugs
+		envSlugs, ok := env["PROJECT_SLUGS"]
+		if ok && envSlugs != "" {
+			slugs = envSlugs
+		}
+		// handle special 'slugs'
+		if slugs == "all" {
+			slugs = "sql:select distinct project_slug from mv_subprojects where project_slug is not null and trim(project_slug) != ''"
+		}
+		var slugsAry []string
+		if strings.HasPrefix(slugs, "sql:") {
+			var err error
+			slugsAry, err = getQuerySlugs(db, debug, slugs[4:])
+			if err != nil {
+				return err
+			}
+		} else {
+			slugsAry = strings.Split(slugs, ",")
+		}
+		task[gPrefix+"PROJECT_SLUG"] = slugs
+
+		// Ranges
+		ranges := taskDef.TimeRanges
+		envRanges, ok := env["TIME_RANGES"]
+		if ok && envRanges != "" {
+			ranges = envRanges
+		}
+		// handle special 'ranges'
+		if ranges == "all" {
+			ranges = "7d,30d,q,ty,y,2y,a,7dp,30dp,qp,typ,yp,2yp"
+		}
+		rangesAry := strings.Split(ranges, ",")
+
+		// Extra params
+		for k, v := range taskDef.ExtraParams {
+			task[gPrefix+"PARAM_"+k] = v
+		}
+
+		// Extra env
+		for k, v := range taskDef.ExtraEnv {
+			task[gPrefix+k] = v
+		}
+
+		for _, slug := range slugsAry {
+			for _, rng := range rangesAry {
+				// Final task to execute
+				newTask := make(map[string]string)
+				for k, v := range task {
+					newTask[k] = v
+				}
+				newTask[gPrefix+"TIME_RANGE"] = rng
+				newTask[gPrefix+"PROJECT_SLUG"] = slug
+				allTasks = append(allTasks, newTask)
+			}
+		}
+	}
+	// FIXME
+	lib.Logf("%d tasks\n", len(allTasks))
+	if debug {
+		for _, task := range allTasks {
+			lib.Logf("task: %+v\n", task)
+		}
+	}
+	return nil
 }
 
 func sync() error {
@@ -94,6 +201,10 @@ func sync() error {
 	}
 	if debug {
 		lib.Logf("metrics: %+v\n", metrics)
+	}
+	err = runTasks(db, metrics, debug, env)
+	if err != nil {
+		return err
 	}
 	return nil
 }
