@@ -109,3 +109,8 @@ func YearStart(dt time.Time) time.Time {
 func ToYMDHMS(dt time.Time) string {
 	return fmt.Sprintf("%04d-%02d-%02d %02d:%02d:%02d", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second())
 }
+
+// ToYMDQuoted - return time formatted as 'YYYY-MM-DD'
+func ToYMDQuoted(dt time.Time) string {
+	return fmt.Sprintf("'%04d-%02d-%02d'", dt.Year(), dt.Month(), dt.Day())
+}

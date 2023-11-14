@@ -179,10 +179,11 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 	return dtf, dtt
 }
 
-func needsCalculation(db *sql.DB, table string, debug bool, env map[string]string) (bool, error) {
+func needsCalculation(db *sql.DB, table string, debug bool, env map[string]string) (bool, time.Time, time.Time, error) {
+	var tm time.Time
 	_, ok := env["FORCE_CALC"]
 	if ok {
-		return true, nil
+		return true, tm, tm, nil
 	}
 	timeRange, _ := env["TIME_RANGE"]
 	switch timeRange {
@@ -190,33 +191,33 @@ func needsCalculation(db *sql.DB, table string, debug bool, env map[string]strin
 		dtf, dtt := currentTimeRange(timeRange, debug, env)
 		isCalc, err := isCalculated(db, table, timeRange, debug, env, dtf, dtt)
 		if err != nil {
-			return true, err
+			return true, dtf, dtt, err
 		}
-		return !isCalc, nil
+		return !isCalc, dtf, dtt, nil
 	case "c":
 		dtFrom, ok := env["DATE_FROM"]
 		if !ok {
-			return true, fmt.Errorf("you must specify %sDATE_FROM when using %sTIME_RANGE=c", gPrefix, gPrefix)
+			return true, tm, tm, fmt.Errorf("you must specify %sDATE_FROM when using %sTIME_RANGE=c", gPrefix, gPrefix)
 		}
 		dtTo, ok := env["DATE_TO"]
 		if !ok {
-			return true, fmt.Errorf("you must specify %sDATE_TO when using %sTIME_RANGE=c", gPrefix, gPrefix)
+			return true, tm, tm, fmt.Errorf("you must specify %sDATE_TO when using %sTIME_RANGE=c", gPrefix, gPrefix)
 		}
 		dtf, err := lib.TimeParseAny(dtFrom)
 		if err != nil {
-			return true, err
+			return true, tm, tm, err
 		}
 		dtt, err := lib.TimeParseAny(dtTo)
 		if err != nil {
-			return true, err
+			return true, dtf, tm, err
 		}
 		isCalc, err := isCalculated(db, table, timeRange, debug, env, dtf, dtt)
 		if err != nil {
-			return true, err
+			return true, dtf, dtt, err
 		}
-		return !isCalc, nil
+		return !isCalc, dtf, dtt, nil
 	default:
-		return true, fmt.Errorf("unknown time range: '%s'", timeRange)
+		return true, tm, tm, fmt.Errorf("unknown time range: '%s'", timeRange)
 	}
 }
 
@@ -256,7 +257,7 @@ func calcMetric() error {
 		lib.Logf("db: %+v\n", db)
 	}
 	table, _ := env["TABLE"]
-	needsCalc, err := needsCalculation(db, table, debug, env)
+	needsCalc, dtf, dtt, err := needsCalculation(db, table, debug, env)
 	if err != nil {
 		return err
 	}
@@ -289,9 +290,19 @@ func calcMetric() error {
 			sql = strings.Replace(sql, "{{"+n+"}}", v, -1)
 		}
 	}
+	dtfs := lib.ToYMDQuoted(dtf)
+	dtts := lib.ToYMDQuoted(dtt)
+	sql = strings.Replace(sql, "{{date_from}}", dtfs, -1)
+	sql = strings.Replace(sql, "{{date_to}}", dtts, -1)
 	if debug {
 		lib.Logf("generated SQL:\n%s\n", sql)
 	}
+	/*
+		needsCalc, err := calculate(db, sql, table, debug, env)
+		if err != nil {
+			return err
+		}
+	*/
 	return nil
 }
 
