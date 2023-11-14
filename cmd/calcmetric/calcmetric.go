@@ -26,6 +26,10 @@ var (
 	}
 )
 
+func needsCalculation(table string, env map[string]string) (bool, error) {
+	return true, nil
+}
+
 func calcMetric() error {
 	env := make(map[string]string)
 	prefixLen := len(gPrefix)
@@ -60,6 +64,17 @@ func calcMetric() error {
 	}
 	if debug {
 		lib.Logf("db: %+v\n", db)
+	}
+	table, _ := env["TABLE"]
+	needsCalc, err := needsCalculation(table, env)
+	if err != nil {
+		return err
+	}
+	if !needsCalc {
+		if debug {
+			lib.Logf("table '%s' doesn't need calculation now\n", table)
+		}
+		return nil
 	}
 	metric, _ := env["METRIC"]
 	path, ok := env["PATH"]

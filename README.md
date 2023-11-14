@@ -37,3 +37,11 @@ Those are mandatory parameters that must be specified:
 
 Example:
 - `V3_CONN=[redacted] ./calcparams.sh` - this runs example calculation, or: `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``.
+
+
+Generated tables:
+- Generated table will use name from `V3_TABLE`.
+- This table will always have the following columns:
+  - `time_range` - it will be the value passed in `V3_TIME_RANGE`.
+  - `last_calculated_at` - will store the value when this table was last calculated.
+  - `date_from`, `date_to` - will have time from and time to values for which a given records were calcualted.
