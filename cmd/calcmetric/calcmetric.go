@@ -1,11 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	_ "github.com/lib/pq" // As suggested by lib/pq driver
 	lib "github.com/lukaszgryglicki/calcmetric"
 )
 
@@ -49,6 +51,14 @@ func calcMetric() error {
 			err := fmt.Errorf("%s", msg)
 			return err
 		}
+	}
+	connStr, _ := env["CONN"]
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	if debug {
+		lib.Logf("db: %+v\n", db)
 	}
 	return nil
 }
