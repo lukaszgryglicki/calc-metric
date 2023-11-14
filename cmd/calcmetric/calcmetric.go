@@ -26,7 +26,44 @@ var (
 	}
 )
 
+func isCalculated(table, timeRange string, env map[string]string, dtf, dtt time.Time) (bool, error) {
+	return false, nil
+}
+
 func needsCalculation(table string, env map[string]string) (bool, error) {
+	_, ok := env["FORCE_CALC"]
+	if ok {
+		return true, nil
+	}
+	timeRange, _ := env["TIME_RANGE"]
+	switch timeRange {
+	case "c":
+		dtFrom, ok := env["DATE_FROM"]
+		if !ok {
+			return true, fmt.Errorf("you must specify %sDATE_FROM when using %sTIME_RANGE=c", gPrefix, gPrefix)
+		}
+		dtTo, ok := env["DATE_TO"]
+		if !ok {
+			return true, fmt.Errorf("you must specify %sDATE_TO when using %sTIME_RANGE=c", gPrefix, gPrefix)
+		}
+		dtf, err := lib.TimeParseAny(dtFrom)
+		if err != nil {
+			return true, err
+		}
+		dtt, err := lib.TimeParseAny(dtTo)
+		if err != nil {
+			return true, err
+		}
+		isCalculated, err := isCalculated(table, timeRange, env, dtf, dtt)
+		if err != nil {
+			return true, err
+		}
+		if 1 == 1 {
+			return !isCalculated, nil
+		}
+	default:
+		return true, fmt.Errorf("unknown time range: '%s'", timeRange)
+	}
 	return true, nil
 }
 

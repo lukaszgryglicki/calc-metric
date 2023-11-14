@@ -1,4 +1,4 @@
-# calc-metric
+# calcmetric
 
 This program is used to calculate a metrc and save its values to a dedicated table.
 
@@ -35,6 +35,9 @@ Those are mandatory parameters that must be specified:
 - `V3_PATH` - path to metric SQL files, `./sql/` if not specified.
 - `V3_PARAM_xyz` - extra params to replace in `SQL` file, for example specifying `V3_PARAM_my_param=my_value` will replace `{{my_param}}` with `my_value` in metric's SQL file.
 
+
+# Running
+
 Example:
 - `V3_CONN=[redacted] ./calcparams.sh` - this runs example calculation, or: `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``.
 
@@ -45,3 +48,10 @@ Generated tables:
   - `time_range` - it will be the value passed in `V3_TIME_RANGE`.
   - `last_calculated_at` - will store the value when this table was last calculated.
   - `date_from`, `date_to` - will have time from and time to values for which a given records were calcualted.
+
+
+# Running all calculations
+
+There is a file `calculations.yaml` that specifies all metrics that needs to be calculated, it runs in a loop and checks every single metric and eventually regenerates it if needed.
+
+Each entry in this file is a single invocation of `calcmetric` program. This is handles by `sync` program that will be written to handle this [TODO].
