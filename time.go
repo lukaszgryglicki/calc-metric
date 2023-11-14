@@ -62,6 +62,35 @@ func WeekStart(dt time.Time) time.Time {
 	return DayStart(dt).AddDate(0, 0, -subDays)
 }
 
+// MonthStart - return time rounded to current month start
+func MonthStart(dt time.Time) time.Time {
+	return time.Date(
+		dt.Year(),
+		dt.Month(),
+		1,
+		0,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+}
+
+// QuarterStart - return time rounded to current month start
+func QuarterStart(dt time.Time) time.Time {
+	month := ((dt.Month()-1)/3)*3 + 1
+	return time.Date(
+		dt.Year(),
+		month,
+		1,
+		0,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+}
+
 // ToYMDHMS - return time formatted as YYYY-MM-DD HH:MI:SS
 func ToYMDHMS(dt time.Time) string {
 	return fmt.Sprintf("%04d-%02d-%02d %02d:%02d:%02d", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second())

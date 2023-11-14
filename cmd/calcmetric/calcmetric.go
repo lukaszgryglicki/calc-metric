@@ -76,7 +76,7 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 	dtf, dtt := now, now
 	switch timeRange {
 	case "7d", "7dp":
-		_, daily := env["V3_CALC_WEEK_DAILY"]
+		_, daily := env["CALC_WEEK_DAILY"]
 		if daily {
 			dtt = lib.DayStart(now)
 			dtf = dtt.AddDate(0, 0, -7)
@@ -88,8 +88,45 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 			dtf = dtf.AddDate(0, 0, -7)
 			dtt = dtt.AddDate(0, 0, -7)
 		}
+	case "30d", "30dp":
+		_, daily := env["CALC_MONTH_DAILY"]
+		if daily {
+			dtt = lib.DayStart(now)
+			dtf = dtt.AddDate(0, 0, -30)
+			if timeRange == "30dp" {
+				dtf = dtf.AddDate(0, 0, -30)
+				dtt = dtt.AddDate(0, 0, -30)
+			}
+		} else {
+			dtt = lib.MonthStart(now)
+			dtf = dtt.AddDate(0, -1, 0)
+			if timeRange == "30dp" {
+				dtf = dtf.AddDate(0, -1, 0)
+				dtt = dtt.AddDate(0, -1, 0)
+			}
+		}
+	case "q", "qp":
+		_, daily := env["CALC_QUARTER_DAILY"]
+		if daily {
+			dtt = lib.DayStart(now)
+			dtf = dtt.AddDate(0, -3, 0)
+			if timeRange == "qp" {
+				dtf = dtf.AddDate(0, -3, 0)
+				dtt = dtt.AddDate(0, -3, 0)
+			}
+		} else {
+			dtt = lib.QuarterStart(now)
+			dtf = dtt.AddDate(0, -3, 0)
+			if timeRange == "qp" {
+				dtf = dtf.AddDate(0, -3, 0)
+				dtt = dtt.AddDate(0, -3, 0)
+			}
+		}
 	}
 	return dtf, dtt
+	// diff := dtt.Sub(dtf)
+	// dtf = dtf.Add(-diff)
+	// dtt = dtt.Add(-diff)
 }
 
 func needsCalculation(db *sql.DB, table string, debug bool, env map[string]string) (bool, error) {
