@@ -15,12 +15,12 @@ const (
 
 var (
 	gRequired = []string{
-    "CONN",
-    "METRIC",
-    "TABLE",
-    "PROJECT_SLUG",
-    "TIME_RANGE",
-  }
+		"CONN",
+		"METRIC",
+		"TABLE",
+		"PROJECT_SLUG",
+		"TIME_RANGE",
+	}
 )
 
 func calcMetric() error {
@@ -29,10 +29,12 @@ func calcMetric() error {
 	for _, pair := range os.Environ() {
 		if strings.HasPrefix(pair, gPrefix) {
 			ary := strings.Split(pair, "=")
-			if len(ary) != 2 {
+			if len(ary) < 2 {
 				continue
 			}
-			env[ary[0][prefixLen:]] = ary[1]
+			key := ary[0]
+			val := strings.Join(ary[1:], "=")
+			env[key[prefixLen:]] = val
 		}
 	}
 	_, debug := env["DEBUG"]

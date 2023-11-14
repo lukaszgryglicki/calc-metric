@@ -25,3 +25,4 @@ go.work
 *.sw*
 /go.sum
 /calcmetric
+*.secret

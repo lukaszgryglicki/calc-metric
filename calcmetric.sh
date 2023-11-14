@@ -1,0 +1,19 @@
+#!/bin/bash
+if [ -z "${V3_CONN}" ]
+then
+  echo "$0: you must specify V3_CONN='db connect string'"
+  exit 1
+fi
+export V3_METRIC=contributor-leaderboard
+export V3_TABLE=metric_contr_lead
+export V3_PROJECT_SLUG=envoy
+export V3_TIME_RANGE=7d
+export V3_DEBUG=1
+# export V3_CALC_WEEK_DAILY=1
+# export V3_CALC_MONTH_DAILY=1
+# export V3_CALC_QUARTER_DAILY=1
+# export V3_DATE_FROM=2023-10-01
+# export V3_DATE_TO=2023-11-01
+# export V3_FORCE_CALC=1
+# export V3_PARAM_my_param="my value"
+./calcmetric
