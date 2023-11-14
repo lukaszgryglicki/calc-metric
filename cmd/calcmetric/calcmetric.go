@@ -93,8 +93,8 @@ func dbTypeName(column *sql.ColumnType) (string, error) {
 	}
 }
 
-func calculate(db *sql.DB, sql, table string, debug bool, env map[string]string) error {
-	rows, err := db.Query(sql)
+func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo string, debug bool, env map[string]string) error {
+	rows, err := db.Query(sqlQuery)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,10 @@ func calculate(db *sql.DB, sql, table string, debug bool, env map[string]string)
 		return err
 	}
 	if debug {
-		lib.Logf("columns: %+v\n", columns)
+		lib.Logf("columns: %d\n", len(columns))
+		for _, column := range columns {
+			lib.Logf("%+v\n", column)
+		}
 	}
 	createTable := fmt.Sprintf(`
 create table if not exists "%s"(
@@ -118,12 +121,15 @@ create table if not exists "%s"(
 		table,
 	)
 	l := len(columns) - 1
+	colNames := []string{}
 	for i, column := range columns {
 		tp, err := dbTypeName(column)
 		if err != nil {
 			return err
 		}
-		createTable += fmt.Sprintf(`  %s %s`, column.Name(), tp)
+		colName := column.Name()
+		colNames = append(colNames, colName)
+		createTable += fmt.Sprintf(`  %s %s`, colName, tp)
 		nullable, ok := column.Nullable()
 		if ok && !nullable {
 			createTable += ` not null`
@@ -146,24 +152,82 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 	if debug {
 		lib.Logf("create table:\n%s\n", createTable)
 	}
-	res, err := db.Exec(sql)
+	_, err = db.Exec(createTable)
 	if err != nil {
 		return err
 	}
-	if debug {
-		lib.Logf("result: %+v\n", res)
+	i := 0
+	nColumns := len(columns)
+	pValues := make([]interface{}, nColumns)
+	for i := range columns {
+		pValues[i] = new(sql.RawBytes)
 	}
-	/*
-		for rows.Next() {
-			err := rows.Scan(&lastCalc)
-			if err != nil {
-				return false, err
+	calcDt := time.Now()
+	p := 0
+	ep := 0
+	queryRoot := fmt.Sprintf(`insert into "%s"(time_range, project_slug, last_calculated_at, date_from, date_to, row_number, `, table)
+	query := ""
+	args := []interface{}{}
+	for rows.Next() {
+		err := rows.Scan(pValues...)
+		if err != nil {
+			return err
+		}
+		i++
+		args = append(args, []interface{}{timeRange, projectSlug, calcDt, dtFrom, dtTo, i}...)
+		for _, pValue := range pValues {
+			args = append(args, string(*pValue.(*sql.RawBytes)))
+		}
+		if ep == 0 {
+			ep = len(pValues)
+		}
+		if query == "" {
+			query = queryRoot
+			for j, colName := range colNames {
+				query += colName
+				if j < l {
+					query += ", "
+				}
+			}
+			query += fmt.Sprintf(`) values ($%d, $%d, $%d, $%d, $%d, $%d, `, p+1, p+2, p+3, p+4, p+5, p+6)
+		} else {
+			query += fmt.Sprintf(`, ($%d, $%d, $%d, $%d, $%d, $%d, `, p+1, p+2, p+3, p+4, p+5, p+6)
+		}
+		for j := range colNames {
+			query += fmt.Sprintf("$%d", p+j+7)
+			if j < l {
+				query += ", "
 			}
 		}
-	*/
-	err = rows.Err()
-	if err != nil {
-		return err
+		query += ")"
+		p += 6 + ep
+		if p >= 1000-(6+ep) {
+			query += " on conflict do nothing"
+			if debug {
+				lib.Logf("flush at %d\n", p)
+				lib.Logf("query:\n%s\n", query)
+				lib.Logf("args(%d):\n%+v\n", len(args), args)
+			}
+			_, err = db.Exec(query, args...)
+			if err != nil {
+				return err
+			}
+			query = ""
+			args = []interface{}{}
+			p = 0
+		}
+	}
+	if len(args) > 0 {
+		query += " on conflict do nothing"
+		if debug {
+			lib.Logf("final flush at %d\n", p)
+			lib.Logf("query:\n%s\n", query)
+			lib.Logf("args(%d):\n%+v\n", len(args), args)
+		}
+		_, err = db.Exec(query, args...)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -350,10 +414,22 @@ func calcMetric() error {
 	if err != nil {
 		return err
 	}
+	defer func() { db.Close() }()
 	if debug {
 		lib.Logf("db: %+v\n", db)
 	}
 	table, _ := env["TABLE"]
+	_, drop := env["DROP"]
+	if drop {
+		dropTable := fmt.Sprintf(`drop table if exists "%s"`, table)
+		if debug {
+			lib.Logf("drop table:\n%s\n", dropTable)
+		}
+		_, err = db.Exec(dropTable)
+		if err != nil {
+			return err
+		}
+	}
 	needsCalc, dtf, dtt, err := needsCalculation(db, table, debug, env)
 	if err != nil {
 		return err
@@ -394,7 +470,8 @@ func calcMetric() error {
 	if debug {
 		lib.Logf("generated SQL:\n%s\n", sql)
 	}
-	err = calculate(db, sql, table, debug, env)
+	timeRange, _ := env["TIME_RANGE"]
+	err = calculate(db, sql, table, projectSlug, timeRange, dtfs, dtts, debug, env)
 	if err != nil {
 		return err
 	}

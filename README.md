@@ -36,6 +36,7 @@ Those are mandatory parameters that must be specified:
 - `V3_LIMIT` - limit rows to this value.
 - `V3_OFFSET` - offset from this value.
 - `V3_DEBUG` - set debug mode.
+- `V3_DROP` - drop destination table if exists. This is to support data cleanup.
 - `V3_PATH` - path to metric SQL files, `./sql/` if not specified.
 - `V3_PARAM_xyz` - extra params to replace in `SQL` file, for example specifying `V3_PARAM_my_param=my_value` will replace `{{my_param}}` with `my_value` in metric's SQL file.
 

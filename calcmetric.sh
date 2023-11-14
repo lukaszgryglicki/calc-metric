@@ -24,5 +24,6 @@ export V3_DATE_TO=2023-11-01
 # export V3_FORCE_CALC=1
 # export V3_PARAM_my_param="my value"
 # export V3_PARAM_type=contributions
+# export V3_DROP=1
 export V3_DEBUG=1
 ./calcmetric
