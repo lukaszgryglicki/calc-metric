@@ -21,7 +21,7 @@ export V3_PARAM_is_bot='!= true'
 # export V3_PARAM_is_bot_value='false'
 # export V3_LIMIT=20
 # export V3_OFFSET=0
-# export V3_PATH='./sql/'
+# export V3_SQL_PATH='./sql/'
 # export V3_CALC_WEEK_DAILY=1
 # export V3_CALC_MONTH_DAILY=1
 # export V3_CALC_QUARTER_DAILY=1

@@ -550,7 +550,7 @@ func calcMetric() error {
 		return nil
 	}
 	metric, _ := env["METRIC"]
-	path, ok := env["PATH"]
+	path, ok := env["SQL_PATH"]
 	if !ok {
 		path = "./sql/"
 	}

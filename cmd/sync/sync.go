@@ -67,7 +67,7 @@ func getQuerySlugs(db *sql.DB, debug bool, query string) ([]string, error) {
 }
 
 func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) error {
-	path, ok := env["CALC_PATH"]
+	path, ok := env["BIN_PATH"]
 	if !ok {
 		path = "./"
 	}
@@ -185,7 +185,7 @@ func sync() error {
 	if debug {
 		lib.Logf("db: %+v\n", db)
 	}
-	path, ok := env["SYNC_PATH"]
+	path, ok := env["YAML_PATH"]
 	if !ok {
 		path = "./"
 	}
