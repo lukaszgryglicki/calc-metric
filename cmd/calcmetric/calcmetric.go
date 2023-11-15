@@ -170,6 +170,8 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 	calcDt := time.Now()
 	p := 0
 	ep := 0
+	// This is the type of query that we will be using (UPSERT):
+	// insert into t(a, b, c) values (1, 2, 30), (4, 5, 60) on conflict(a, b) do update set (b, c) = (excluded.b, excluded.c);
 	queryRoot := fmt.Sprintf(`insert into "%s"(time_range, project_slug, last_calculated_at, date_from, date_to, row_number, `, table)
 	query := ""
 	args := []interface{}{}
@@ -208,7 +210,21 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 		query += ")"
 		p += 6 + ep
 		if p >= 1000-(6+ep) {
-			query += " on conflict do nothing"
+			query += " on conflict(time_range, project_slug, date_from, date_to, row_number) do update set ("
+			for j, colName := range colNames {
+				query += colName
+				if j < l {
+					query += ", "
+				}
+			}
+			query += ") = ("
+			for j, colName := range colNames {
+				query += "excluded." + colName
+				if j < l {
+					query += ", "
+				}
+			}
+			query += ")"
 			if debug {
 				lib.Logf("flush at %d\n", p)
 				lib.Logf("query:\n%s\n", query)
@@ -225,7 +241,21 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 		}
 	}
 	if len(args) > 0 {
-		query += " on conflict do nothing"
+		query += " on conflict(time_range, project_slug, date_from, date_to, row_number) do update set ("
+		for j, colName := range colNames {
+			query += colName
+			if j < l {
+				query += ", "
+			}
+		}
+		query += ") = ("
+		for j, colName := range colNames {
+			query += "excluded." + colName
+			if j < l {
+				query += ", "
+			}
+		}
+		query += ")"
 		if debug {
 			lib.Logf("final flush at %d\n", p)
 			lib.Logf("query:\n%s\n", query)
