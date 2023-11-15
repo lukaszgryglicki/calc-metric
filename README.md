@@ -91,7 +91,7 @@ Example run:
 It will generate table with data for "contributor leaderboard" table - this will contain all data you need inone table, without need to call a separate JSON calls to get previous period vaues (it already calculates `change from previous`) and totals (it already calculated `percent of total`) plus it even returns numbe rof all contributors that is needed for paging.
 
 To sum up - the table created via single calculation will have that all and a single cube JSON query can get that data for a specified project & time range.
-- You run `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``. [calcmetric.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/calcmetric.sh).
+- You run `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``. [calcmetric.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/calcmetric.sh) ([source]((https://github.com/lukaszgryglicki/calcmetric/blob/main/cmd/calcmetric/calcmetric.go)).
 - It runs `calcmetric.sh` with DB connect string taken from `REPLICA.secret` file (you can source it from [this example file](https://github.com/lukaszgryglicki/calcmetric/blob/main/REPLICA.secret.example)), it specifies the following parameters:
 ```
 export V3_METRIC=contr-lead-acts-all
@@ -102,6 +102,7 @@ export V3_PARAM_tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
 export V3_PARAM_is_bot='!= true'
 ```
 - So it runs [./sql/contr-lead-acts-all.sql](https://github.com/lukaszgryglicki/calcmetric/blob/main/sql/contr-lead-acts-all.sql) - this SQL returns data for current, previous period and totals including number of all contributors.
+- `calcmetric` will replace all `{{placeholder_variable}}` placeholders within that SQL - thsi is the way it is parametrized.
 - `calcmetric` will add `project_slug`, `time_range`, `date_from`, `date_to`, `row_number` columns.
 - It will create table like this:
 ```
@@ -132,7 +133,7 @@ Indexes:
     "metric_contr_lead_acts_all_time_range_idx" btree (time_range)
 ```
 You can see that this table already has:
-- primary key: `(time_range, project_slug, date_from, date_to, row_number)`, so the calculation context is `(time_range, project_slug, date_from, date_to)` - remainign data is for this context + then rows (each have an identity data in this case).
+- primary key: `(time_range, project_slug, date_from, date_to, row_number)`, so the calculation context is `(time_range, project_slug, date_from, date_to)` - remaining data is for this context + then rows (each have an identity data in this case).
 - `contributions` - current contributions.
 - `prev_contributions` - value for previous time range.
 - `all_contributuions` - all contributions for current context.
@@ -141,10 +142,12 @@ You can see that this table already has:
 - other data related to identity in this case, like: `memberid, platform, username, is_bot` and so on.
 
 
-NOTE: previously this needed to make at least 3 cube calls (to get current data, previous time range data and to get total counts) - all fo them were generating a very complex Activities cube query which was not based on materialized views and was using very heavy pre-aggregation - now it will be a single call to a single table specifying time range and project and THAT's IT!
+*NOTE: previously this needed to make at least 3 cube calls (to get current data, previous time range data and to get total counts) - all fo them were generating a very complex Activities cube query which was not based on materialized views and was using very heavy pre-aggregation - now it will be a single call to a single table specifying time range and project and THAT's IT!*
 
 
-We can also mass-calculate this for multiple projects at once using `sync` tool:
+# Bulk calclations
+
+We can also mass-calculate this for multiple projects at once using `sync` tool ([source]((https://github.com/lukaszgryglicki/calcmetric/blob/main/cmd/sync/sync.go)):
 - You run `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``. [sync.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/sync.sh).
 - It uses [calculations.yaml](https://github.com/lukaszgryglicki/calcmetric/blob/main/calculations.yaml) file that instructs `sync` tool about how shoudl it call `calcmetric` for multiple prohects/time-ranges, etc., thsi si the example contents:
 ```
