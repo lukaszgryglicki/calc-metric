@@ -299,12 +299,22 @@ func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[
 		task,
 	)
 	dtEnd := time.Now()
+	took := dtEnd.Sub(dtStart)
 	if err != nil {
 		msg := fmt.Sprintf("task #%d (%+v) failed (took %v): %+v: %s\n", idx, task, dtEnd.Sub(dtStart), err, res)
 		if debug {
 			lib.Logf("%s\n", msg)
 		}
 		err = fmt.Errorf("%s", msg)
+	} else {
+		if !debug {
+			offset := len(gPrefix)
+			msg := fmt.Sprintf("task #%d finished in %v, details:\n", idx, took)
+			for k, v := range task {
+				msg += fmt.Sprintf("\t%s: %+v\n", k[offset:], v)
+			}
+			lib.Logf(msg)
+		}
 	}
 	if debug {
 		lib.Logf("task #%d (%+v) executed, took: %v\n", idx, task, dtEnd.Sub(dtStart))
