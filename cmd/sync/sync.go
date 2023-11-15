@@ -21,6 +21,7 @@ var (
 	gRequired = []string{
 		"CONN",
 	}
+	gSlugsMap map[string][]string
 )
 
 // Metrics contain all metrics to calculate
@@ -43,6 +44,14 @@ type Metric struct {
 }
 
 func getQuerySlugs(db *sql.DB, debug bool, query string) ([]string, error) {
+	query = strings.TrimSpace(query)
+	ary, ok := gSlugsMap[query]
+	if ok {
+		if debug {
+			lib.Logf("returing result %+v for '%s' query from cache\n", ary, query)
+		}
+		return ary, nil
+	}
 	slug, slugs := "", []string{}
 	if debug {
 		lib.Logf("executing the following query to get slugs:\n%s\n", query)
@@ -63,6 +72,7 @@ func getQuerySlugs(db *sql.DB, debug bool, query string) ([]string, error) {
 	if err != nil {
 		return slugs, err
 	}
+	gSlugsMap[query] = slugs
 	return slugs, nil
 }
 
@@ -150,6 +160,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 }
 
 func sync() error {
+	gSlugsMap = make(map[string][]string)
 	env := make(map[string]string)
 	prefixLen := len(gPrefix)
 	for _, pair := range os.Environ() {
