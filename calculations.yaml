@@ -3,7 +3,7 @@ metrics:
   contr_lead_acts_non_bots:
     metric: contr-lead-acts-all
     table: metric_contr_lead_acts_nbot
-    project_slugs: top5
+    project_slugs: 'top:10'
     time_ranges: all
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"

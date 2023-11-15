@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -40,7 +41,7 @@ type Metric struct {
 	Table  string `yaml:"table"`  // Maps to V3_TABLE
 	// Can be overwritten with V3_PROJECT_SLUGS env variable
 	// Can also use "all" which connects to DB and gets all slugs using built-in SQL command
-  // Can also use "top:N", for example "top:5" - it will return top 5 slugs by number of contributions for all time then.
+	// Can also use "top:N", for example "top:5" - it will return top 5 slugs by number of contributions for all time then.
 	ProjectSlugs string `yaml:"project_slugs"` // Comma separated list of V3_PROJECT_SLUG values, can also be SQL like `"sql:select distinct project_slug from mv_subprojects"`
 	// Can be overwritten with V3_TIME_RANGES env variable
 	TimeRanges  string            `yaml:"time_ranges"`  // Comma separated list of time ranges (V3_TIME_RANGE) to calculate or "all" which means all supported time ranges
@@ -197,8 +198,20 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 		// handle special 'slugs'
 		if slugs == "all" {
 			slugs = "sql:select distinct project_slug from mv_subprojects where project_slug is not null and trim(project_slug) != ''"
-    } else if strings.HasPrefix(slugs, "top:") {
-      xxx
+		} else if strings.HasPrefix(slugs, "top:") {
+			top, err := strconv.Atoi(slugs[4:])
+			if err != nil {
+				return err
+			}
+			if top <= 0 {
+				top = 1
+			}
+			slugs = fmt.Sprintf(
+				`sql:select i.project_slug from (select p.project_slug, count(a.id) as acts from activities a, mv_subprojects p
+             where a.segmentId = p.id and a.timestamp >= now() - '3 months'::interval and p.project_slug is not null
+             and trim(p.project_slug) != '' group by p.project_slug order by acts desc limit %d) i`,
+				top,
+			)
 		}
 		var slugsAry []string
 		if strings.HasPrefix(slugs, "sql:") {
@@ -313,8 +326,13 @@ func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[
 		if !debug {
 			offset := len(gPrefix)
 			msg := fmt.Sprintf("task #%d finished in %v, details:\n", idx, took)
-			for k, v := range task {
-				msg += fmt.Sprintf("\t%s: %+v\n", k[offset:], v)
+			ks := []string{}
+			for k := range task {
+				ks = append(ks, k)
+			}
+			sort.Strings(ks)
+			for _, k := range ks {
+				msg += fmt.Sprintf("\t%s: %+v\n", k[offset:], task[k])
 			}
 			lib.Logf(msg)
 		}
