@@ -91,8 +91,8 @@ Example run:
 It will generate table with data for "contributor leaderboard" table - thsi will contain all data you need inone table, without need to call a separate JSON calls to get previous period vaues (it already calculates `change from previous`) and totals (it already calculated `percent of total`) plus it even returns numbe rof all contributors that is needed for paging.
 
 To sum up - the table created via single calculation will have that all and a single cube JSON query can get that data for a specified project & time range.
-- You run `V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh`.
-- It runs `calcmetric.sh` example with DB connect string taken from `REPLICA.secret` file, it specifies the following parameters:
+- You run `V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh`. [calcmetric.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/calcmetric.sh).
+- It runs `calcmetric.sh` with DB connect string taken from `REPLICA.secret` file (you can source it from [this example file](https://github.com/lukaszgryglicki/calcmetric/blob/main/REPLICA.secret.example)), it specifies the following parameters:
 ```
 export V3_METRIC=contr-lead-acts-all
 export V3_TABLE=metric_contr_lead_acts_all
@@ -101,7 +101,7 @@ export V3_TIME_RANGE=7d
 export V3_PARAM_tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
 export V3_PARAM_is_bot='!= true'
 ```
-- So it runs `./sql/contr-lead-acts-all.sql` - this SQL returns data for current, previous period and totals including numbe rof all contributors.
+- So it runs [./sql/contr-lead-acts-all.sql](https://github.com/lukaszgryglicki/calcmetric/blob/main/sql/contr-lead-acts-all.sql) - this SQL returns data for current, previous period and totals including number of all contributors.
 - `calcmetric` will add `project_slug`, `time_range`, `date_from`, `date_to`, `row_number` columns.
 - It will create table like this:
 ```
@@ -143,4 +143,28 @@ You can see that this table already has:
 
 NOTE: previously this needed to make at least 3 cube calls (to get current data, previous time range data and to get total counts) - all fo them were generating a very complex Activities cube query which was not based on materialized views and was using very heavy pre-aggregation - now it will be a single call to a single table specifying time range and project and THAT's IT!
 
+
 We can also mass-calculate this for multiple projects at once using `sync` tool:
+- You run `V3_CONN="`cat ./REPLICA.secret`" ./sync.sh`. [sync.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/sync.sh).
+- It uses [calculations.yaml](https://github.com/lukaszgryglicki/calcmetric/blob/main/calculations.yaml) file that instructs `sync` tool about how shoudl it call `calcmetric` for multiple prohects/time-ranges, etc., thsi si the example contents:
+```
+---
+metrics:
+  contr_lead_acts_non_bots:
+    metric: contr-lead-acts-all
+    table: metric_contr_lead_acts_nbot
+    project_slugs: all
+    time_ranges: all
+    extra_params:
+      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
+      is_bot: '!= true'
+```
+- It specifies metric to use [contr-lead-acts-all](https://github.com/lukaszgryglicki/calcmetric/blob/main/sql/contr-lead-acts-all.sql).
+- Output table to save data: `metric_contr_lead_acts_nbot`.
+- Then it specifies projects-slugs to run: `all` means that it will execute thsi query to get all slugs:
+```
+select distinct project_slug from mv_subprojects where project_slug is not null and trim(project_slug) != ''
+```
+- Specifies which time ranges to run: `all` means all excluding `c` (custom) - as it is not possible to guess all possible YYYY-MM-DD combinations.
+- Extra params specifies some additional flags to be passed to `calcmetric` tool.
+
