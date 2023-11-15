@@ -134,8 +134,15 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 			lib.Logf("%+v\n", column)
 		}
 	}
-	createTable := fmt.Sprintf(`
-create table if not exists "%s"(
+	indicesAry := []string{}
+	indices, ok := env["INDEXED_COLUMNS"]
+	if ok && indices != "" {
+		indicesAry = strings.Split(indices, ",")
+		if debug {
+			lib.Logf("extra indices requested: %+v\n", indicesAry)
+		}
+	}
+	createTable := fmt.Sprintf(`create table if not exists "%s"(
   time_range varchar(6) not null,
   project_slug varchar(6) not null,
   last_calculated_at timestamp not null,
@@ -174,18 +181,25 @@ create table if not exists "%s"(
 `
 		}
 	}
-	createTable += fmt.Sprintf(`
-create index if not exists "%s_time_range_idx" on "%s"(time_range);
+	createTable += fmt.Sprintf(`create index if not exists "%s_time_range_idx" on "%s"(time_range);
 `,
 		table,
 		table,
 	)
 	if !ppt {
-		createTable += fmt.Sprintf(`
-create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
+		createTable += fmt.Sprintf(`create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 `,
 			table,
 			table,
+		)
+	}
+	for _, index := range indicesAry {
+		createTable += fmt.Sprintf(`create index if not exists "%s_%s_idx" on "%s"(%s);
+`,
+			table,
+			index,
+			table,
+			index,
 		)
 	}
 	if debug {
