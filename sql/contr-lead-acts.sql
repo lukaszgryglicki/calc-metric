@@ -3,6 +3,7 @@ select
   a.memberId,
   a.platform,
   a.username,
+  {{is_bot_value}} as is_bot,
   count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit','co-authored-commit') then a.sourceParentId else a.id::text end) as contributions
 from
   activities a

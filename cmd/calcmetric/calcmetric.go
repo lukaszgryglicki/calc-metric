@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -26,19 +27,37 @@ var (
 	}
 )
 
+func queryOut(query string, args ...interface{}) {
+	lib.Logf("%s\n", query)
+	if len(args) > 0 {
+		s := ""
+		for vi, vv := range args {
+			switch v := vv.(type) {
+			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, complex64, complex128, string, bool, time.Time:
+				s += fmt.Sprintf("%d:%+v ", vi+1, v)
+			case nil:
+				s += fmt.Sprintf("%d:(null) ", vi+1)
+			default:
+				s += fmt.Sprintf("%d:%+v ", vi+1, reflect.ValueOf(vv))
+			}
+		}
+		lib.Logf("[%s]\n", s)
+	}
+}
+
 func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[string]string, dtf, dtt time.Time) (bool, error) {
 	dtf = lib.DayStart(dtf)
 	// dtt = lib.NextDayStart(dtt)
 	dtt = lib.DayStart(dtt)
-	sql := fmt.Sprintf(
+	sqlQuery := fmt.Sprintf(
 		`select last_calculated_at from "%s" where time_range = $1 and date_from = $2 and date_to = $3`,
 		table,
 	)
 	args := []interface{}{timeRange, dtf, dtt}
 	if debug {
-		lib.Logf("executing sql: %s\nwith args: %+v\n", sql, args)
+		lib.Logf("executing sql: %s\nwith args: %+v\n", sqlQuery, args)
 	}
-	rows, err := db.Query(sql, args...)
+	rows, err := db.Query(sqlQuery, args...)
 	if err != nil {
 		switch e := err.(type) {
 		case *pq.Error:
@@ -47,8 +66,10 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 				lib.Logf("table '%s' does not exist yet, so we need to calculate this metric.\n", table)
 				return false, nil
 			}
+			queryOut(sqlQuery, args)
 			return false, err
 		default:
+			queryOut(sqlQuery, args)
 			return false, err
 		}
 	}
@@ -79,7 +100,7 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 func dbTypeName(column *sql.ColumnType) (string, error) {
 	name := strings.ToLower(column.DatabaseTypeName())
 	switch name {
-	case "text":
+	case "text", "bool":
 		return name, nil
 	case "varchar":
 		return "text", nil
@@ -93,6 +114,7 @@ func dbTypeName(column *sql.ColumnType) (string, error) {
 func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo string, ppt, debug bool, env map[string]string) error {
 	rows, err := db.Query(sqlQuery)
 	if err != nil {
+		queryOut(sqlQuery, []interface{}{})
 		return err
 	}
 	defer func() { _ = rows.Close() }()
@@ -159,6 +181,7 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 	}
 	_, err = db.Exec(createTable)
 	if err != nil {
+		queryOut(createTable, []interface{}{})
 		return err
 	}
 	i := 0
@@ -232,6 +255,7 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 			}
 			_, err = db.Exec(query, args...)
 			if err != nil {
+				queryOut(query, args)
 				return err
 			}
 			query = ""
@@ -263,6 +287,7 @@ create index if not exists "%s_project_slug_idx" on "%s"(project_slug);
 		}
 		_, err = db.Exec(query, args...)
 		if err != nil {
+			queryOut(query, args)
 			return err
 		}
 		batches++
@@ -466,6 +491,7 @@ func calcMetric() error {
 		}
 		_, err = db.Exec(dropTable)
 		if err != nil {
+			queryOut(dropTable, []interface{}{})
 			return err
 		}
 	}
@@ -485,9 +511,7 @@ func calcMetric() error {
 		if ok {
 			needsCalc = true
 		}
-		if debug {
-			lib.Logf("table '%s' doesn't need calculation but it was requested to calculate anyway\n", table)
-		}
+		lib.Logf("table '%s' doesn't need calculation but it was requested to calculate anyway\n", table)
 	}
 	if !needsCalc {
 		if debug {
@@ -537,10 +561,15 @@ func calcMetric() error {
 
 func main() {
 	dtStart := time.Now()
+	rCode := 0
 	err := calcMetric()
 	if err != nil {
 		lib.Logf("calcMetric error: %+v\n", err)
+		rCode = 1
 	}
 	dtEnd := time.Now()
 	lib.Logf("time: %v\n", dtEnd.Sub(dtStart))
+	if rCode != 0 {
+		os.Exit(rCode)
+	}
 }
