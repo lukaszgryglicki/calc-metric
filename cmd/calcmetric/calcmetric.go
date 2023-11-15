@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	gPrefix = "V3_"
+	gPrefix          = "V3_"
+	gMaxPlaceholders = 10000
 )
 
 var (
@@ -25,6 +26,10 @@ var (
 		"PROJECT_SLUG",
 		"TIME_RANGE",
 	}
+	// -1 - error
+	// 0 - ok, no calculations needed
+	// 1 - calculated
+	gFinalState = 0
 )
 
 func queryOut(query string, args ...interface{}) {
@@ -285,6 +290,7 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 	calcDt := time.Now()
 	p := 0
 	ep := 0
+	changes := false
 	// This is the type of query that we will be using (UPSERT):
 	// insert into t(a, b, c) values (1, 2, 30), (4, 5, 60) on conflict(a, b) do update set (b, c) = (excluded.b, excluded.c);
 	queryRoot := fmt.Sprintf(`insert into "%s"(time_range, project_slug, last_calculated_at, date_from, date_to, row_number, `, table)
@@ -324,7 +330,7 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 		}
 		query += ")"
 		p += 6 + ep
-		if p >= 1000-(6+ep) {
+		if p >= gMaxPlaceholders-(6+ep) {
 			query += " on conflict(time_range, project_slug, date_from, date_to, row_number) do update set "
 			if l > 0 {
 				query += "("
@@ -354,10 +360,19 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 				lib.Logf("query:\n%s\n", query)
 				lib.Logf("args(%d):\n%+v\n", len(args), args)
 			}
-			_, err = db.Exec(query, args...)
+			var rslt sql.Result
+			rslt, err = db.Exec(query, args...)
 			if err != nil {
 				queryOut(query, args...)
 				return err
+			}
+			nRows, err := rslt.RowsAffected()
+			if err != nil {
+				queryOut(query, args...)
+				return err
+			}
+			if !changes && nRows > 0 {
+				changes = true
 			}
 			query = ""
 			args = []interface{}{}
@@ -395,16 +410,28 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 			lib.Logf("query:\n%s\n", query)
 			lib.Logf("args(%d):\n%+v\n", len(args), args)
 		}
-		_, err = db.Exec(query, args...)
+		var rslt sql.Result
+		rslt, err = db.Exec(query, args...)
 		if err != nil {
 			queryOut(query, args...)
 			return err
+		}
+		nRows, err := rslt.RowsAffected()
+		if err != nil {
+			queryOut(query, args...)
+			return err
+		}
+		if !changes && nRows > 0 {
+			changes = true
 		}
 		batches++
 	}
 	err = rows.Err()
 	if err != nil {
 		return err
+	}
+	if changes {
+		gFinalState = 1
 	}
 	lib.Logf("completed in %d batches\n", batches)
 	return nil
@@ -680,9 +707,10 @@ func main() {
 	if err != nil {
 		lib.Logf("calcMetric error: %+v\n", err)
 		rCode = 1
+		gFinalState = -1
 	}
 	dtEnd := time.Now()
-	lib.Logf("time: %v\n", dtEnd.Sub(dtStart))
+	lib.Logf("time: %v, final state: %d\n", dtEnd.Sub(dtStart), gFinalState)
 	if rCode != 0 {
 		os.Exit(rCode)
 	}

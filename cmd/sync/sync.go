@@ -309,10 +309,27 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	return nil
 }
 
+func prettyPrintTask(task map[string]string) {
+	var msg string
+	offset := len(gPrefix)
+	ks := []string{}
+	for k := range task {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+	for _, k := range ks {
+		msg += fmt.Sprintf("\t%s: %+v\n", k[offset:], task[k])
+	}
+	lib.Logf(msg)
+}
+
 func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[string]string) error {
 	task := tasks[idx]
 	if debug {
 		lib.Logf("processing task #%d: %+v\n", idx, task)
+	} else {
+		lib.Logf("processing task #%d, details:\n", idx)
+		prettyPrintTask(task)
 	}
 	var err error
 	dtStart := time.Now()
@@ -331,17 +348,8 @@ func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[
 		err = fmt.Errorf("%s", msg)
 	} else {
 		if !debug {
-			offset := len(gPrefix)
-			msg := fmt.Sprintf("task #%d finished in %v, details:\n", idx, took)
-			ks := []string{}
-			for k := range task {
-				ks = append(ks, k)
-			}
-			sort.Strings(ks)
-			for _, k := range ks {
-				msg += fmt.Sprintf("\t%s: %+v\n", k[offset:], task[k])
-			}
-			lib.Logf(msg)
+			lib.Logf("task #%d finished in %v, details:\n", idx, took)
+			prettyPrintTask(task)
 		}
 	}
 	if debug {
