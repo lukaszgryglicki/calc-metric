@@ -45,6 +45,10 @@ func queryOut(query string, args ...interface{}) {
 	}
 }
 
+func toDBIdentifier(arg string) string {
+	return strings.Replace(strings.ToLower(arg), "-", "_", -1)
+}
+
 func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[string]string, dtf, dtt time.Time) (bool, error) {
 	dtf = lib.DayStart(dtf)
 	// dtt = lib.NextDayStart(dtt)
@@ -144,7 +148,7 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 	}
 	createTable := fmt.Sprintf(`create table if not exists "%s"(
   time_range varchar(6) not null,
-  project_slug varchar(6) not null,
+  project_slug text not null,
   last_calculated_at timestamp not null,
   date_from date not null,
   date_to date not null,
@@ -525,7 +529,7 @@ func calcMetric() error {
 	// Per Project Tables
 	_, ppt := env["PPT"]
 	if ppt {
-		table += "_" + projectSlug
+		table += "_" + toDBIdentifier(projectSlug)
 	}
 	timeRange, _ := env["TIME_RANGE"]
 	needsCalc, dtf, dtt, err := needsCalculation(db, table, timeRange, debug, env)
