@@ -53,7 +53,9 @@ Those parameters are optional:
 
 Example:
 - Create your own `REPLICA.secret` - it is gitignored in the repo, you can yse `REPLICA.secret.example` file as a starting point.
-- `V3_CONN=[redacted] ./calcmetric.sh` - this runs example calculation, or: `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric2.sh ``.
+- `V3_CONN=[redacted] ./calcmetric.sh` - this runs example calculation, or: `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``.
+- Other example scripts are in `./examples/sh/*.sh`.
+- Other example metrics SQLs are in `./examples/sql/*.sql`.
 
 
 Generated tables:
@@ -82,4 +84,63 @@ This program uses the following environment variables:
 Example run:
 - Create your own `REPLICA.secret` - it is gitignored in the repo, you can yse `REPLICA.secret.example` file as a starting point.
 - `V3_CONN=[redacted] ./sync.sh` - this runs example sync, or: `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``.
+- Other example YAMLS are in `./examples/yaml/*.yaml`.
 
+# Full example how to get contributor leaderboard
+
+It will generate table with data for "contributor leaderboard" table - thsi will contain all data you need inone table, without need to call a separate JSON calls to get previous period vaues (it already calculates `change from previous`) and totals (it already calculated `percent of total`) plus it even returns numbe rof all contributors that is needed for paging.
+
+To sum up - the table created via single calculation will have that all and a single cube JSON query can get that data for a specified project & time range.
+- You run `V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh`.
+- It runs `calcmetric.sh` example with DB connect string taken from `REPLICA.secret` file, it specifies the following parameters:
+```
+export V3_METRIC=contr-lead-acts-all
+export V3_TABLE=metric_contr_lead_acts_all
+export V3_PROJECT_SLUG=envoy
+export V3_TIME_RANGE=7d
+export V3_PARAM_tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
+export V3_PARAM_is_bot='!= true'
+```
+- So it runs `./sql/contr-lead-acts-all.sql` - this SQL returns data for current, previous period and totals including numbe rof all contributors.
+- `calcmetric` will add `project_slug`, `time_range`, `date_from`, `date_to`, `row_number` columns.
+- It will create table like this:
+```
+crowd=> \d metric_contr_lead_acts_all
+                   Table "crowd_public.metric_contr_lead_acts_all"
+        Column        |            Type             | Collation | Nullable | Default
+----------------------+-----------------------------+-----------+----------+---------
+ time_range           | character varying(6)        |           | not null |
+ project_slug         | text                        |           | not null |
+ last_calculated_at   | timestamp without time zone |           | not null |
+ date_from            | date                        |           | not null |
+ date_to              | date                        |           | not null |
+ row_number           | integer                     |           | not null |
+ logo_url             | text                        |           |          |
+ memberid             | text                        |           |          |
+ platform             | text                        |           |          |
+ username             | text                        |           |          |
+ is_bot               | boolean                     |           |          |
+ contributions        | bigint                      |           |          |
+ all_contributions    | bigint                      |           |          | 
+ prev_contributions   | bigint                      |           |          |
+ percent_total        | numeric                     |           |          |
+ change_from_previous | numeric                     |           |          |
+ all_contributors     | bigint                      |           |          |
+Indexes:
+    "metric_contr_lead_acts_all_pkey" PRIMARY KEY, btree (time_range, project_slug, date_from, date_to, row_number)
+    "metric_contr_lead_acts_all_project_slug_idx" btree (project_slug)
+    "metric_contr_lead_acts_all_time_range_idx" btree (time_range)
+```
+You can see that this table already has:
+- primary key: `(time_range, project_slug, date_from, date_to, row_number)`, so the calculation context is `(time_range, project_slug, date_from, date_to)` - remainign data is for this context + then rows (each have an identity data in this case).
+- `contributions` - current contributions.
+- `prev_contributions` - value for previous time range.
+- `all_contributuions` - all contributions for current context.
+- `change_from_previous` - change from previous calculated using the two above, if there are no contributions for the previous period for that contributor, it will return `100` - like 100% more.
+- `percent_total` - percent of total contributions: `contributions / all_contributions`.
+- other data related to identity in this case, like: `memberid, platform, username, is_bot` and so on.
+
+
+NOTE: previously this needed to make at least 3 cube calls (to get current data, previous time range data and to get total counts) - all fo them were generating a very complex Activities cube query which was not based on materialized views and was using very heavy pre-aggregation - now it will be a single call to a single table specifying time range and project and THAT's IT!
+
+We can also mass-calculate this for multiple projects at once using `sync` tool:
