@@ -77,6 +77,7 @@ Each entry in this file is a single invocation of `calcmetric` program. This is 
 This program uses the following environment variables:
 - `V3_YAML_PATH` - path to where `calculations.yaml` is, `./` if not specified.
 - `V3_BIN_PATH` - path to where `calcmetric` binary is, `./` if not specified.
+- `V3_THREADS` - specify number of threads to run in parallel (`sync` will invoke up to that many of `calcmetric` calls in parallel). Empty or zero or negative number will default to numbe rof CPU cores available.
 
 Example run:
 - Create your own `REPLICA.secret` - it is gitignored in the repo, you can yse `REPLICA.secret.example` file as a starting point.

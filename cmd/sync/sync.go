@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -74,6 +76,28 @@ func getQuerySlugs(db *sql.DB, debug bool, query string) ([]string, error) {
 	}
 	gSlugsMap[query] = slugs
 	return slugs, nil
+}
+
+func getThreadsNum(debug bool, env map[string]string) int {
+	threads, ok := env["THREADS"]
+	if ok && threads != "" {
+		nThreads, err := strconv.Atoi(threads)
+		if err == nil && nThreads > 0 {
+			if debug {
+				lib.Logf("using environment specified threads count: %d\n", nThreads)
+			}
+			return nThreads
+		}
+		if err != nil {
+			lib.Logf("error parsing threads number from '%s': %+v\n", threads, err)
+		}
+	}
+	thrN := runtime.NumCPU()
+	runtime.GOMAXPROCS(thrN)
+	if debug {
+		lib.Logf("using threads count: %d as reported by golang runtime\n", thrN)
+	}
+	return thrN
 }
 
 func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) error {
@@ -149,12 +173,55 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			}
 		}
 	}
-	// FIXME
 	lib.Logf("%d tasks\n", len(allTasks))
 	if debug {
 		for _, task := range allTasks {
 			lib.Logf("task: %+v\n", task)
 		}
+	}
+	thrN := getThreadsNum(debug, env)
+	if thrN > 1 {
+		ch := make(chan error)
+		nThreads := 0
+		for i := range allTasks {
+			go processTask(ch, i, debug, allTasks)
+			nThreads++
+			if nThreads == thrN {
+				err := <-ch
+				nThreads--
+				if err != nil {
+					lib.Logf("error: %+v\n", err)
+				}
+			}
+		}
+		if debug {
+			lib.Logf("Final threads join\n")
+		}
+		for nThreads > 0 {
+			err := <-ch
+			nThreads--
+			if err != nil {
+				lib.Logf("error: %+v\n", err)
+			}
+		}
+	} else {
+		for i := range allTasks {
+			err := processTask(nil, i, debug, allTasks)
+			if err != nil {
+				lib.Logf("error: %+v\n", err)
+			}
+		}
+	}
+	return nil
+}
+
+func processTask(ch chan error, idx int, debug bool, tasks []map[string]string) error {
+	task := tasks[idx]
+	if debug {
+		lib.Logf("processing task #%d: %+v\n", idx, task)
+	}
+	if ch != nil {
+		ch <- nil
 	}
 	return nil
 }

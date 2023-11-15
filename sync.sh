@@ -7,4 +7,6 @@ fi
 # export V3_YAML_PATH='./'
 # export V3_BIN_PATH='./'
 # export V3_DEBUG=1
+# export V3_THREADS=1
+export V3_THREADS=6
 ./sync
