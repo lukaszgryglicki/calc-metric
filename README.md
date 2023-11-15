@@ -81,6 +81,22 @@ This program uses the following environment variables:
 - `V3_BIN_PATH` - path to where `calcmetric` binary is, `./` if not specified.
 - `V3_THREADS` - specify number of threads to run in parallel (`sync` will invoke up to that many of `calcmetric` calls in parallel). Empty or zero or negative number will default to numbe rof CPU cores available.
 
+
+YAML file fields descripution:
+- `metric` - Maps to `calcmetric`'s `V3_METRIC`. Metric SQL file to use.
+- `table` - Maps to `V3_TABLE` - table to save data to.
+- `project_slugs`:
+  - Comma separated list of `V3_PROJECT_SLUG` values, can also be SQL like `"sql:select distinct project_slug from mv_subprojects"`.
+	- Can be overwritten with `V3_PROJECT_SLUGS` env variable.
+	- Can also use `all` which connects to DB and gets all slugs using built-in SQL command.
+  - Can also use `top:N`, for example `top:5` - it will return top 5 slugs by number of contributions for all time then.
+- `time_ranges`:
+  - Comma separated list of time ranges (`V3_TIME_RANGE`) to calculate or `all` which means all supported time ranges excluding `c` (custom).
+	- Can be overwritten with `V3_TIME_RANGES` env variable.
+- `extra_params` - YAML map `k:v` with `V3_PARAM_` prefix skipped in keys, for example: `tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"`, `is_bot='!= true'`.
+- `extra_env` - YAML map `k:v` with `V3_` prefix skipped in keys, for example: `DEBUG=1`, `DATE_FROM=2023-10-01`, `DATE_TO=2023-11-01`.
+
+
 Example run:
 - Create your own `REPLICA.secret` - it is gitignored in the repo, you can yse `REPLICA.secret.example` file as a starting point.
 - `V3_CONN=[redacted] ./sync.sh` - this runs example sync, or: `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``.
@@ -142,7 +158,7 @@ You can see that this table already has:
 - other data related to identity in this case, like: `memberid, platform, username, is_bot` and so on.
 
 
-*NOTE: previously this needed to make at least 3 cube calls (to get current data, previous time range data and to get total counts) - all fo them were generating a very complex Activities cube query which was not based on materialized views and was using very heavy pre-aggregation - now it will be a single call to a single table specifying time range and project and THAT's IT!*
+**NOTE: previously this needed to make at least 3 cube calls (to get current data, previous time range data and to get total counts) - all fo them were generating a very complex Activities cube query which was not based on materialized views and was using very heavy pre-aggregation - now it will be a single call to a single table specifying time range and project and THAT's IT!**
 
 
 # Bulk calclations
