@@ -714,4 +714,8 @@ func main() {
 	if rCode != 0 {
 		os.Exit(rCode)
 	}
+	if rCode == 0 && gFinalState == 0 {
+		// This is to mark that calculations were not needed
+		os.Exit(66)
+	}
 }

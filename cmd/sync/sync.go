@@ -87,7 +87,7 @@ func logCommand(cmdAndArgs []string, env map[string]string) {
 	lib.Logf("command, arguments, environment:\n%+v\n%+v\n", cmdAndArgs, env)
 }
 
-func execCommand(debug bool, cmdAndArgs []string, env map[string]string) (string, error) {
+func execCommand(debug bool, cmdAndArgs []string, env map[string]string) (string, bool, error) {
 	// Execution time
 	dtStart := time.Now()
 
@@ -131,13 +131,23 @@ func execCommand(debug bool, cmdAndArgs []string, env map[string]string) (string
 	err := cmd.Start()
 	if err != nil {
 		logCommand(cmdAndArgs, env)
-		return "", err
+		return "", false, err
 	}
 	// wait for command to finish
+	skipped := false
 	err = cmd.Wait()
 	if err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			rCode := exiterr.ExitCode()
+			if rCode == 66 {
+				err = nil
+				skipped = true
+			}
+		}
+	}
+	if err != nil {
 		logCommand(cmdAndArgs, env)
-		return "stdout:\n" + stdOut.String() + "\nstderr: " + stdErr.String(), err
+		return "stdout:\n" + stdOut.String() + "\nstderr: " + stdErr.String(), skipped, err
 	}
 
 	if debug {
@@ -149,7 +159,7 @@ func execCommand(debug bool, cmdAndArgs []string, env map[string]string) (string
 		dtEnd := time.Now()
 		lib.Logf("%s ... %+v\n", info, dtEnd.Sub(dtStart))
 	}
-	return "stdout:\n" + stdOut.String() + "\nstderr: " + stdErr.String(), nil
+	return "stdout:\n" + stdOut.String() + "\nstderr: " + stdErr.String(), skipped, nil
 }
 
 func getThreadsNum(debug bool, env map[string]string) int {
@@ -326,14 +336,12 @@ func prettyPrintTask(task map[string]string) {
 func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[string]string) error {
 	task := tasks[idx]
 	if debug {
-		lib.Logf("processing task #%d: %+v\n", idx, task)
-	} else {
 		lib.Logf("processing task #%d, details:\n", idx)
 		prettyPrintTask(task)
 	}
 	var err error
 	dtStart := time.Now()
-	res, err := execCommand(
+	res, skipped, err := execCommand(
 		debug,
 		[]string{binCmd},
 		task,
@@ -348,12 +356,12 @@ func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[
 		err = fmt.Errorf("%s", msg)
 	} else {
 		if !debug {
-			lib.Logf("task #%d finished in %v, details:\n", idx, took)
+			lib.Logf("task #%d finished in %v (skipped: %v), details:\n", idx, took, skipped)
 			prettyPrintTask(task)
 		}
 	}
 	if debug {
-		lib.Logf("task #%d (%+v) executed, took: %v\n", idx, task, dtEnd.Sub(dtStart))
+		lib.Logf("task #%d (%+v) executed (skipped: %v), took: %v\n", idx, task, skipped, dtEnd.Sub(dtStart))
 	}
 	if ch != nil {
 		ch <- err
