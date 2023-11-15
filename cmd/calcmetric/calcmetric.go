@@ -113,6 +113,8 @@ func dbTypeName(column *sql.ColumnType, env map[string]string) (string, error) {
 		return "timestamp", nil
 	case "int8", "int16", "int32", "int64":
 		return "bigint", nil
+	case "float8":
+		return "numeric", nil
 	default:
 		if guess {
 			return name, nil
@@ -622,8 +624,8 @@ func calcMetric() error {
 		_, ok := env["FORCE_CALC"]
 		if ok {
 			needsCalc = true
+			lib.Logf("table '%s' doesn't need calculation but it was requested to calculate anyway\n", table)
 		}
-		lib.Logf("table '%s' doesn't need calculation but it was requested to calculate anyway\n", table)
 	}
 	if !needsCalc {
 		if debug {
