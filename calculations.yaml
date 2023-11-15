@@ -3,6 +3,7 @@ metrics:
   contr_lead_acts_non_bots:
     metric: contr-lead-acts-all
     table: metric_contr_lead_acts_nbot
+    # project_slugs: top:10
     project_slugs: all
     time_ranges: all
     extra_params:
