@@ -69,7 +69,7 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 		return false, err
 	}
 	if fetched {
-		lib.Logf("table '%s' was last computed at %+v for (%s, %+v, %+v), so skipping calculation\n", table, lastCalc, timeRange, dtf, dtt)
+		lib.Logf("table '%s' was last computed at %+v for (%s, %+v, %+v), so calculation is not needed\n", table, lastCalc, timeRange, dtf, dtt)
 		return true, nil
 	}
 	lib.Logf("table '%s' present, but it needs calculation for (%s, %+v, %+v)\n", table, timeRange, dtf, dtt)
@@ -134,7 +134,10 @@ create table if not exists "%s"(
 		if i < l {
 			createTable += ",\n"
 		} else {
-			createTable += "\n);\n"
+			createTable += `,
+  primary key(time_range, project_slug, date_from, date_to, row_number)
+);
+`
 		}
 	}
 	createTable += fmt.Sprintf(`
@@ -351,13 +354,8 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 	return dtf, dtt
 }
 
-func needsCalculation(db *sql.DB, table string, debug bool, env map[string]string) (bool, time.Time, time.Time, error) {
+func needsCalculation(db *sql.DB, table, timeRange string, debug bool, env map[string]string) (bool, time.Time, time.Time, error) {
 	var tm time.Time
-	_, ok := env["FORCE_CALC"]
-	if ok {
-		return true, tm, tm, nil
-	}
-	timeRange, _ := env["TIME_RANGE"]
 	switch timeRange {
 	case "7d", "7dp", "30d", "30dp", "q", "qp", "ty", "typ", "y", "yp", "2y", "2yp", "a":
 		dtf, dtt := currentTimeRange(timeRange, debug, env)
@@ -447,9 +445,19 @@ func calcMetric() error {
 	if ppt {
 		table += "_" + projectSlug
 	}
-	needsCalc, dtf, dtt, err := needsCalculation(db, table, debug, env)
+	timeRange, _ := env["TIME_RANGE"]
+	needsCalc, dtf, dtt, err := needsCalculation(db, table, timeRange, debug, env)
 	if err != nil {
 		return err
+	}
+	if !needsCalc {
+		_, ok := env["FORCE_CALC"]
+		if ok {
+			needsCalc = true
+		}
+		if debug {
+			lib.Logf("table '%s' doesn't need calculation but it was requested to calculate anyway\n", table)
+		}
 	}
 	if !needsCalc {
 		if debug {
@@ -470,9 +478,13 @@ func calcMetric() error {
 	sql := string(contents)
 	sql = strings.Replace(sql, "{{project_slug}}", projectSlug, -1)
 	limit, _ := env["LIMIT"]
-	sql = strings.Replace(sql, "{{limit}}", limit, -1)
+	if limit != "" {
+		sql = strings.Replace(sql, "{{limit}}", limit, -1)
+	}
 	offset, _ := env["OFFSET"]
-	sql = strings.Replace(sql, "{{offset}}", offset, -1)
+	if offset != "" {
+		sql = strings.Replace(sql, "{{offset}}", offset, -1)
+	}
 	for k, v := range env {
 		if strings.HasPrefix(k, "PARAM_") {
 			n := k[6:]
@@ -486,7 +498,6 @@ func calcMetric() error {
 	if debug {
 		lib.Logf("generated SQL:\n%s\n", sql)
 	}
-	timeRange, _ := env["TIME_RANGE"]
 	err = calculate(db, sql, table, projectSlug, timeRange, dtfs, dtts, ppt, debug, env)
 	if err != nil {
 		return err

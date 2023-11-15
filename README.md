@@ -45,6 +45,7 @@ Those are mandatory parameters that must be specified, see examples in `calcmetr
 # Running
 
 Example:
+- Create your own `REPLICA.secret` - it is gitignored in the repo, you can yse `REPLICA.secret.example` file as a starting point.
 - `V3_CONN=[redacted] ./calcmetric.sh` - this runs example calculation, or: `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``.
 
 
@@ -69,4 +70,5 @@ This program uses the following environment variables:
 - `V3_CALC_PATH` - path to where `calcmetric` binary is, `./` if not specified.
 
 Example run:
+- Create your own `REPLICA.secret` - it is gitignored in the repo, you can yse `REPLICA.secret.example` file as a starting point.
 - `V3_CONN=[redacted] ./sync.sh` - this runs example sync, or: `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``.
