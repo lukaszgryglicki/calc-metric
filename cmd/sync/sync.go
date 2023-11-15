@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -76,6 +78,75 @@ func getQuerySlugs(db *sql.DB, debug bool, query string) ([]string, error) {
 	}
 	gSlugsMap[query] = slugs
 	return slugs, nil
+}
+
+func logCommand(cmdAndArgs []string, env map[string]string) {
+	lib.Logf("command, arguments, environment:\n%+v\n%+v\n", cmdAndArgs, env)
+}
+
+func execCommand(debug bool, cmdAndArgs []string, env map[string]string) (string, error) {
+	// Execution time
+	dtStart := time.Now()
+
+	// command & arguments
+	command := cmdAndArgs[0]
+	arguments := cmdAndArgs[1:]
+	if debug {
+		var args []string
+		for _, arg := range cmdAndArgs {
+			argLen := len(arg)
+			if argLen > 0x200 {
+				arg = arg[0:0x100] + "..." + arg[argLen-0x100:argLen]
+			}
+			if strings.Contains(arg, " ") {
+				args = append(args, "'"+arg+"'")
+			} else {
+				args = append(args, arg)
+			}
+		}
+		lib.Logf("%s\n", strings.Join(args, " "))
+	}
+	// prepare command
+	cmd := exec.Command(command, arguments...)
+	// Set its env
+	if len(env) > 0 {
+		newEnv := os.Environ()
+		for key, value := range env {
+			newEnv = append(newEnv, key+"="+value)
+		}
+		cmd.Env = newEnv
+	}
+	// capture stdout & stderr
+	var (
+		stdOut bytes.Buffer
+		stdErr bytes.Buffer
+	)
+	cmd.Stderr = &stdErr
+	cmd.Stdout = &stdOut
+
+	// start command
+	err := cmd.Start()
+	if err != nil {
+		logCommand(cmdAndArgs, env)
+		return "", err
+	}
+	// wait for command to finish
+	err = cmd.Wait()
+	if err != nil {
+		logCommand(cmdAndArgs, env)
+		return "stdout:\n" + stdOut.String() + "\nstderr: " + stdErr.String(), err
+	}
+
+	if debug {
+		info := strings.Join(cmdAndArgs, " ")
+		lenInfo := len(info)
+		if lenInfo > 0x280 {
+			info = info[0:0x140] + "..." + info[lenInfo-0x140:lenInfo]
+		}
+		dtEnd := time.Now()
+		lib.Logf("%s ... %+v\n", info, dtEnd.Sub(dtStart))
+	}
+	return "stdout:\n" + stdOut.String() + "\nstderr: " + stdErr.String(), nil
 }
 
 func getThreadsNum(debug bool, env map[string]string) int {
@@ -184,7 +255,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 		ch := make(chan error)
 		nThreads := 0
 		for i := range allTasks {
-			go processTask(ch, i, debug, allTasks)
+			go processTask(ch, i, debug, calcBin, allTasks)
 			nThreads++
 			if nThreads == thrN {
 				err := <-ch
@@ -206,7 +277,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 		}
 	} else {
 		for i := range allTasks {
-			err := processTask(nil, i, debug, allTasks)
+			err := processTask(nil, i, debug, calcBin, allTasks)
 			if err != nil {
 				lib.Logf("error: %+v\n", err)
 			}
@@ -215,15 +286,33 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	return nil
 }
 
-func processTask(ch chan error, idx int, debug bool, tasks []map[string]string) error {
+func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[string]string) error {
 	task := tasks[idx]
 	if debug {
 		lib.Logf("processing task #%d: %+v\n", idx, task)
 	}
-	if ch != nil {
-		ch <- nil
+	var err error
+	dtStart := time.Now()
+	res, err := execCommand(
+		debug,
+		[]string{binCmd},
+		task,
+	)
+	dtEnd := time.Now()
+	if err != nil {
+		msg := fmt.Sprintf("task #%d (%+v) failed (took %v): %+v: %s\n", idx, task, dtEnd.Sub(dtStart), err, res)
+		if debug {
+			lib.Logf("%s\n", msg)
+		}
+		err = fmt.Errorf("%s", msg)
 	}
-	return nil
+	if debug {
+		lib.Logf("task #%d (%+v) executed, took: %v\n", idx, task, dtEnd.Sub(dtStart))
+	}
+	if ch != nil {
+		ch <- err
+	}
+	return err
 }
 
 func sync() error {

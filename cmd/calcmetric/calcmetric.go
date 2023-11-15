@@ -70,10 +70,10 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 				lib.Logf("table '%s' does not exist yet, so we need to calculate this metric.\n", table)
 				return false, nil
 			}
-			queryOut(sqlQuery, args)
+			queryOut(sqlQuery, args...)
 			return false, err
 		default:
-			queryOut(sqlQuery, args)
+			queryOut(sqlQuery, args...)
 			return false, err
 		}
 	}
@@ -184,7 +184,7 @@ func supportDelete(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt ti
 func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo string, ppt, debug bool, env map[string]string) error {
 	rows, err := db.Query(sqlQuery)
 	if err != nil {
-		queryOut(sqlQuery, []interface{}{})
+		queryOut(sqlQuery, []interface{}{}...)
 		return err
 	}
 	defer func() { _ = rows.Close() }()
@@ -271,7 +271,7 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 	}
 	_, err = db.Exec(createTable)
 	if err != nil {
-		queryOut(createTable, []interface{}{})
+		queryOut(createTable, []interface{}{}...)
 		return err
 	}
 	i := 0
@@ -323,21 +323,30 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 		query += ")"
 		p += 6 + ep
 		if p >= 1000-(6+ep) {
-			query += " on conflict(time_range, project_slug, date_from, date_to, row_number) do update set ("
+			query += " on conflict(time_range, project_slug, date_from, date_to, row_number) do update set "
+			if l > 0 {
+				query += "("
+			}
 			for j, colName := range colNames {
 				query += colName
 				if j < l {
 					query += ", "
 				}
 			}
-			query += ") = ("
+			if l > 0 {
+				query += ") = ("
+			} else {
+				query += " = "
+			}
 			for j, colName := range colNames {
 				query += "excluded." + colName
 				if j < l {
 					query += ", "
 				}
 			}
-			query += ")"
+			if l > 0 {
+				query += ")"
+			}
 			if debug {
 				lib.Logf("flush at %d\n", p)
 				lib.Logf("query:\n%s\n", query)
@@ -345,7 +354,7 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 			}
 			_, err = db.Exec(query, args...)
 			if err != nil {
-				queryOut(query, args)
+				queryOut(query, args...)
 				return err
 			}
 			query = ""
@@ -355,21 +364,30 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 		}
 	}
 	if len(args) > 0 {
-		query += " on conflict(time_range, project_slug, date_from, date_to, row_number) do update set ("
+		query += " on conflict(time_range, project_slug, date_from, date_to, row_number) do update set "
+		if l > 0 {
+			query += "("
+		}
 		for j, colName := range colNames {
 			query += colName
 			if j < l {
 				query += ", "
 			}
 		}
-		query += ") = ("
+		if l > 0 {
+			query += ") = ("
+		} else {
+			query += " = "
+		}
 		for j, colName := range colNames {
 			query += "excluded." + colName
 			if j < l {
 				query += ", "
 			}
 		}
-		query += ")"
+		if l > 0 {
+			query += ")"
+		}
 		if debug {
 			lib.Logf("final flush at %d\n", p)
 			lib.Logf("query:\n%s\n", query)
@@ -377,7 +395,7 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 		}
 		_, err = db.Exec(query, args...)
 		if err != nil {
-			queryOut(query, args)
+			queryOut(query, args...)
 			return err
 		}
 		batches++
@@ -581,7 +599,7 @@ func calcMetric() error {
 		}
 		_, err = db.Exec(dropTable)
 		if err != nil {
-			queryOut(dropTable, []interface{}{})
+			queryOut(dropTable, []interface{}{}...)
 			return err
 		}
 	}
