@@ -13,4 +13,4 @@ export V3_THREADS=3
 echo "Sync done, exit status: $?"
 # clear && V3_CONN="`cat ./REPLICA.secret`" ./sync.sh 1>> sync.log 2>> sync.err &
 # clear && tail -f sync.???
-# grep -E 'sync|calcmetric'
+# ps -axu | grep -E 'sync|calcmetric'
