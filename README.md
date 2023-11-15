@@ -88,10 +88,10 @@ Example run:
 
 # Full example how to get contributor leaderboard
 
-It will generate table with data for "contributor leaderboard" table - thsi will contain all data you need inone table, without need to call a separate JSON calls to get previous period vaues (it already calculates `change from previous`) and totals (it already calculated `percent of total`) plus it even returns numbe rof all contributors that is needed for paging.
+It will generate table with data for "contributor leaderboard" table - this will contain all data you need inone table, without need to call a separate JSON calls to get previous period vaues (it already calculates `change from previous`) and totals (it already calculated `percent of total`) plus it even returns numbe rof all contributors that is needed for paging.
 
 To sum up - the table created via single calculation will have that all and a single cube JSON query can get that data for a specified project & time range.
-- You run `V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh`. [calcmetric.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/calcmetric.sh).
+- You run `` V3_CONN="`cat ./REPLICA.secret`" ./calcmetric.sh ``. [calcmetric.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/calcmetric.sh).
 - It runs `calcmetric.sh` with DB connect string taken from `REPLICA.secret` file (you can source it from [this example file](https://github.com/lukaszgryglicki/calcmetric/blob/main/REPLICA.secret.example)), it specifies the following parameters:
 ```
 export V3_METRIC=contr-lead-acts-all
@@ -145,7 +145,7 @@ NOTE: previously this needed to make at least 3 cube calls (to get current data,
 
 
 We can also mass-calculate this for multiple projects at once using `sync` tool:
-- You run `V3_CONN="`cat ./REPLICA.secret`" ./sync.sh`. [sync.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/sync.sh).
+- You run `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``. [sync.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/sync.sh).
 - It uses [calculations.yaml](https://github.com/lukaszgryglicki/calcmetric/blob/main/calculations.yaml) file that instructs `sync` tool about how shoudl it call `calcmetric` for multiple prohects/time-ranges, etc., thsi si the example contents:
 ```
 ---
