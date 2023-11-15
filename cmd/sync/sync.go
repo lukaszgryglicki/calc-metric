@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"runtime"
@@ -266,6 +267,12 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			lib.Logf("task: %+v\n", task)
 		}
 	}
+	// randomize tasks so they will refer to random different time ranges/slugs at calculations
+	// seems to be faster when running using multiple threads
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(allTasks), func(i, j int) { allTasks[i], allTasks[j] = allTasks[j], allTasks[i] })
+
+	// process tasks
 	thrN := getThreadsNum(debug, env)
 	if thrN > 1 {
 		ch := make(chan error)
