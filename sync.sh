@@ -10,6 +10,7 @@ fi
 # export V3_THREADS=1
 export V3_THREADS=3
 ./sync
+echo "Sync done, exit status: $?"
 # clear && V3_CONN="`cat ./REPLICA.secret`" ./sync.sh 1>> sync.log 2>> sync.err &
 # clear && tail -f sync.???
 # grep -E 'sync|calcmetric'
