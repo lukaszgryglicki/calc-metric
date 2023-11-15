@@ -97,16 +97,22 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 	return false, nil
 }
 
-func dbTypeName(column *sql.ColumnType) (string, error) {
+func dbTypeName(column *sql.ColumnType, env map[string]string) (string, error) {
+	_, guess := env["GUESS_TYPE"]
 	name := strings.ToLower(column.DatabaseTypeName())
 	switch name {
-	case "text", "bool":
+	case "text", "bool", "date", "interval", "numeric":
 		return name, nil
 	case "varchar":
 		return "text", nil
+	case "timestamptz":
+		return "timestamp", nil
 	case "int8", "int16", "int32", "int64":
 		return "bigint", nil
 	default:
+		if guess {
+			return name, nil
+		}
 		return "error", fmt.Errorf("unknown type: '%s' in %+v", name, column)
 	}
 }
@@ -141,12 +147,18 @@ create table if not exists "%s"(
 	)
 	l := len(columns) - 1
 	colNames := []string{}
+	namesMap := make(map[string]struct{})
 	for i, column := range columns {
-		tp, err := dbTypeName(column)
+		tp, err := dbTypeName(column, env)
 		if err != nil {
 			return err
 		}
 		colName := column.Name()
+		_, ok := namesMap[colName]
+		if ok {
+			return fmt.Errorf("non unique column name '%s'", colName)
+		}
+		namesMap[colName] = struct{}{}
 		colNames = append(colNames, colName)
 		createTable += fmt.Sprintf(`  %s %s`, colName, tp)
 		nullable, ok := column.Nullable()

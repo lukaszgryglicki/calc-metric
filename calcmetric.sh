@@ -29,6 +29,7 @@ export V3_PARAM_is_bot_value='false'
 # export V3_DATE_FROM=2023-10-01
 # export V3_DATE_TO=2023-11-01
 # export V3_FORCE_CALC=1
+# export V3_GUESS_TYPE=1
 # export V3_PARAM_my_param="my value"
 # export V3_PARAM_type=contributions
 # export V3_DROP=1

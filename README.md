@@ -37,6 +37,7 @@ Those are mandatory parameters that must be specified, see examples in `calcmetr
 - `V3_OFFSET` - offset from this value.
 - `V3_DEBUG` - set debug mode.
 - `V3_PPT` - `Per-Project-Tables` - meas - create tables with `_project_slug` added to their name, we can consider using this for speedup.
+- `V3_GUESS_TYPE` - attempt to guess DB type when not specified.
 - `V3_DROP` - drop destination table if exists. This is to support data cleanup.
 - `V3_PATH` - path to metric SQL files, `./sql/` if not specified.
 - `V3_PARAM_xyz` - extra params to replace in `SQL` file, for example specifying `V3_PARAM_my_param=my_value` will replace `{{my_param}}` with `my_value` in metric's SQL file.
