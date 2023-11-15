@@ -187,3 +187,40 @@ select distinct project_slug from mv_subprojects where project_slug is not null 
 - Specifies which time ranges to run: `all` means all excluding `c` (custom) - as it is not possible to guess all possible YYYY-MM-DD combinations.
 - Extra params specifies some additional flags to be passed to `calcmetric` tool.
 
+Example output for calculating Top 10 projects for all time ranges looks like this:
+```
+2023-11-15 10:39:07: 130 tasks
+2023-11-15 10:41:08: task #0 finished in 2m0.785356259s, details:
+	PARAM_is_bot: != true
+	TIME_RANGE: 7d
+	METRIC: contr-lead-acts-all
+	TABLE: metric_contr_lead_acts_nbot
+	PROJECT_SLUG: cncf
+	PARAM_tenant_id: '875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'
+2023-11-15 10:41:53: task #1 finished in 2m45.950157151s, details:
+	TIME_RANGE: 30d
+	TABLE: metric_contr_lead_acts_nbot
+	PROJECT_SLUG: cncf
+	PARAM_tenant_id: '875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'
+	PARAM_is_bot: != true
+	METRIC: contr-lead-acts-all
+2023-11-15 10:48:11: task #2 finished in 9m3.681881757s, details:
+	PROJECT_SLUG: cncf
+	PARAM_tenant_id: '875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'
+	PARAM_is_bot: != true
+	METRIC: contr-lead-acts-all
+	TIME_RANGE: q
+	TABLE: metric_contr_lead_acts_nbot
+```
+
+And generates data like this:
+```
+crowd=> select project_slug, time_range, max(row_number) from metric_contr_lead_acts_nbot group by project_slug, time_range;
+ project_slug | time_range | max
+--------------+------------+------
+ cncf         | q          | 1280
+ cncf         | 30d        |  535
+ cncf         | 7d         |  174
+(3 rows)
+```
+
