@@ -34,5 +34,7 @@ export V3_PARAM_is_bot='!= true'
 # export V3_PARAM_my_param="my value"
 # export V3_PARAM_type=contributions
 # export V3_DROP=1
+# export V3_DELETE='tr,ps,df,dt'
+# export V3_DELETE='ps,tr'
 # export V3_DEBUG=1
 ./calcmetric

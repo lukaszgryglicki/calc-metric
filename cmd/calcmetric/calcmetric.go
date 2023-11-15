@@ -121,6 +121,66 @@ func dbTypeName(column *sql.ColumnType, env map[string]string) (string, error) {
 	}
 }
 
+func supportDelete(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt time.Time, debug bool, env map[string]string) bool {
+	del, delOK := env["DELETE"]
+	if !delOK || del == "" {
+		return false
+	}
+	delAry := strings.Split(del, ",")
+	delMap := make(map[string]struct{})
+	for _, k := range delAry {
+		delMap[k] = struct{}{}
+	}
+	args := []interface{}{}
+	delQuery := fmt.Sprintf(`delete from "%s"`, table)
+	// tr,ps,df,dt
+	conds := []string{}
+	cond := ""
+	i := 0
+	_, tr := delMap["tr"]
+	if tr {
+		i++
+		conds = append(conds, fmt.Sprintf("time_range = $%d", i))
+		args = append(args, timeRange)
+	}
+	_, ps := delMap["ps"]
+	if ps {
+		i++
+		conds = append(conds, fmt.Sprintf("project_slug = $%d", i))
+		args = append(args, projectSlug)
+	}
+	_, df := delMap["df"]
+	if df {
+		i++
+		conds = append(conds, fmt.Sprintf("date_from = $%d", i))
+		args = append(args, dtf)
+	}
+	_, dt := delMap["dt"]
+	if dt {
+		i++
+		conds = append(conds, fmt.Sprintf("date_to = $%d", i))
+		args = append(args, dtt)
+	}
+	if len(conds) > 0 {
+		cond = strings.Join(conds, " and ")
+		delQuery += " where " + cond
+	}
+	if debug {
+		lib.Logf("delete from table:\n%s\n%+v\n", delQuery, args)
+	}
+	res, err := db.Exec(delQuery, args...)
+	if err != nil {
+		lib.Logf("error: %+v\n", err)
+		queryOut(delQuery, args)
+		return false
+	}
+	rows, err := res.RowsAffected()
+	if err == nil {
+		return rows > 0
+	}
+	return false
+}
+
 func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo string, ppt, debug bool, env map[string]string) error {
 	rows, err := db.Query(sqlQuery)
 	if err != nil {
@@ -535,6 +595,10 @@ func calcMetric() error {
 	needsCalc, dtf, dtt, err := needsCalculation(db, table, timeRange, debug, env)
 	if err != nil {
 		return err
+	}
+	deleted := supportDelete(db, table, timeRange, projectSlug, dtf, dtt, debug, env)
+	if deleted {
+		needsCalc, dtf, dtt, err = needsCalculation(db, table, timeRange, debug, env)
 	}
 	if !needsCalc {
 		_, ok := env["FORCE_CALC"]

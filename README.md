@@ -44,6 +44,7 @@ Those parameters are optional:
 - `V3_GUESS_TYPE` - attempt to guess DB type when not specified.
 - `V3_INDEXED_COLUMNS` - specify comma separated list of columns where you want to add extra indices.
 - `V3_DROP` - drop destination table if exists. This is to support data cleanup.
+- `V3_DELETE` - `tr,ps,df,dt` - drop data from destination table for current calculation: each value `tr,ps,df,dt` specifies if `time_range, project_slug, date_from, date_to` keys should be used for deleting. This is to support data cleanup.
 - `V3_SQL_PATH` - path to metric SQL files, `./sql/` if not specified.
 - `V3_PARAM_xyz` - extra params to replace in `SQL` file, for example specifying `V3_PARAM_my_param=my_value` will replace `{{my_param}}` with `my_value` in metric's SQL file.
 
