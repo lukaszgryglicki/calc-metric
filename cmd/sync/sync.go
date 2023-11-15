@@ -355,13 +355,11 @@ func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[
 		}
 		err = fmt.Errorf("%s", msg)
 	} else {
-		if !debug {
-			lib.Logf("task #%d finished in %v (skipped or no data: %v), details:\n", idx, took, skipped)
-			prettyPrintTask(task)
-		}
+		lib.Logf("task #%d finished in %v (skipped or no data: %v), details:\n", idx, took, skipped)
+		prettyPrintTask(task)
 	}
 	if debug {
-		lib.Logf("task #%d (%+v) executed (skipped or no data: %v), took: %v\n", idx, task, skipped, dtEnd.Sub(dtStart))
+		lib.Logf("task #%d (%+v) executed (skipped or no data: %v), took: %v\noutput/stderr:\n%s\n", idx, task, skipped, dtEnd.Sub(dtStart), res)
 	}
 	if ch != nil {
 		ch <- err

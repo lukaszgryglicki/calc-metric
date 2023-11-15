@@ -6,9 +6,9 @@ then
 fi
 # export V3_YAML_PATH='./'
 # export V3_BIN_PATH='./'
-# export V3_DEBUG=1
-# export V3_THREADS=1
-export V3_THREADS=3
+export V3_DEBUG=1
+export V3_THREADS=1
+# export V3_THREADS=3
 ./sync
 echo "Sync done, exit status: $?"
 # clear && V3_CONN="`cat ./REPLICA.secret`" ./sync.sh 1>> sync.log 2>> sync.err &
