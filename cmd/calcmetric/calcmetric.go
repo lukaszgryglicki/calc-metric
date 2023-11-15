@@ -54,15 +54,15 @@ func toDBIdentifier(arg string) string {
 	return strings.Replace(strings.ToLower(arg), "-", "_", -1)
 }
 
-func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[string]string, dtf, dtt time.Time) (bool, error) {
+func isCalculated(db *sql.DB, table, projectSlug, timeRange string, debug bool, env map[string]string, dtf, dtt time.Time) (bool, error) {
 	dtf = lib.DayStart(dtf)
 	// dtt = lib.NextDayStart(dtt)
 	dtt = lib.DayStart(dtt)
 	sqlQuery := fmt.Sprintf(
-		`select last_calculated_at from "%s" where time_range = $1 and date_from = $2 and date_to = $3`,
+		`select last_calculated_at from "%s" where project_slug = $1 and time_range = $2 and date_from = $3 and date_to = $4`,
 		table,
 	)
-	args := []interface{}{timeRange, dtf, dtt}
+	args := []interface{}{projectSlug, timeRange, dtf, dtt}
 	if debug {
 		lib.Logf("executing sql: %s\nwith args: %+v\n", sqlQuery, args)
 	}
@@ -99,10 +99,10 @@ func isCalculated(db *sql.DB, table, timeRange string, debug bool, env map[strin
 		return false, err
 	}
 	if fetched {
-		lib.Logf("table '%s' was last computed at %+v for (%s, %+v, %+v), so calculation is not needed\n", table, lastCalc, timeRange, dtf, dtt)
+		lib.Logf("table '%s' was last computed at %+v for (%s, %s, %+v, %+v), so calculation is not needed\n", table, lastCalc, projectSlug, timeRange, dtf, dtt)
 		return true, nil
 	}
-	lib.Logf("table '%s' present, but it needs calculation for (%s, %+v, %+v)\n", table, timeRange, dtf, dtt)
+	lib.Logf("table '%s' present, but it needs calculation for (%s, %s, %+v, %+v)\n", table, projectSlug, timeRange, dtf, dtt)
 	return false, nil
 }
 
@@ -546,12 +546,12 @@ func currentTimeRange(timeRange string, debug bool, env map[string]string) (time
 	return dtf, dtt
 }
 
-func needsCalculation(db *sql.DB, table, timeRange string, debug bool, env map[string]string) (bool, time.Time, time.Time, error) {
+func needsCalculation(db *sql.DB, table, projectSlug, timeRange string, debug bool, env map[string]string) (bool, time.Time, time.Time, error) {
 	var tm time.Time
 	switch timeRange {
 	case "7d", "7dp", "30d", "30dp", "q", "qp", "ty", "typ", "y", "yp", "2y", "2yp", "a":
 		dtf, dtt := currentTimeRange(timeRange, debug, env)
-		isCalc, err := isCalculated(db, table, timeRange, debug, env, dtf, dtt)
+		isCalc, err := isCalculated(db, table, projectSlug, timeRange, debug, env, dtf, dtt)
 		if err != nil {
 			return true, dtf, dtt, err
 		}
@@ -573,7 +573,7 @@ func needsCalculation(db *sql.DB, table, timeRange string, debug bool, env map[s
 		if err != nil {
 			return true, dtf, tm, err
 		}
-		isCalc, err := isCalculated(db, table, timeRange, debug, env, dtf, dtt)
+		isCalc, err := isCalculated(db, table, projectSlug, timeRange, debug, env, dtf, dtt)
 		if err != nil {
 			return true, dtf, dtt, err
 		}
@@ -639,13 +639,13 @@ func calcMetric() error {
 		table += "_" + toDBIdentifier(projectSlug)
 	}
 	timeRange, _ := env["TIME_RANGE"]
-	needsCalc, dtf, dtt, err := needsCalculation(db, table, timeRange, debug, env)
+	needsCalc, dtf, dtt, err := needsCalculation(db, table, projectSlug, timeRange, debug, env)
 	if err != nil {
 		return err
 	}
 	deleted := supportDelete(db, table, timeRange, projectSlug, dtf, dtt, debug, env)
 	if deleted {
-		needsCalc, dtf, dtt, err = needsCalculation(db, table, timeRange, debug, env)
+		needsCalc, dtf, dtt, err = needsCalculation(db, table, projectSlug, timeRange, debug, env)
 	}
 	if !needsCalc {
 		_, ok := env["FORCE_CALC"]
