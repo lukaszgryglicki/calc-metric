@@ -1,22 +1,6 @@
 with tot as (
   select
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit', 'co-authored-commit') then a.sourceParentId else null end) as commits,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'issues-opened') as issues_opened,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'issues-closed') as issues_closed,
-    count(a.id) filter (where a.type in ('pull_request-comment','pull_request-review-thread-comment')) as pr_comments,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-reviewed') as pr_reviews,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-closed') as prs_closed,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-merged') as prs_merged,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-opened') as prs_opened,
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit', 'co-authored-commit') then a.sourceParentId else a.id::text end) as contributions,
-    count(distinct (memberId, platform, username)) filter (where a.type in ('authored-commit', 'committed-commit', 'co-authored-commit')) as committers,
-    count(distinct (memberId, platform, username)) filter (where a.type = 'issues-opened') as issue_openers,
-    count(distinct (memberId, platform, username)) filter (where a.type = 'issues-closed') as issue_closers,
-    count(distinct (memberId, platform, username)) filter (where a.type in ('pull_request-comment','pull_request-review-thread-comment')) as pr_commenters,
-    count(distinct (memberId, platform, username)) filter (where a.type = 'pull_request-reviewed') as pr_reviewers,
-    count(distinct (memberId, platform, username)) filter (where a.type = 'pull_request-closed') as pr_closers,
-    count(distinct (memberId, platform, username)) filter (where a.type = 'pull_request-merged') as pr_mergers,
-    count(distinct (memberId, platform, username)) filter (where a.type = 'pull_request-opened') as pr_openers,
+    count(distinct split_part(a.url, '#', 1)) as contributions,
     count(distinct (memberId, platform, username)) as contributors
   from
     activities a
@@ -29,16 +13,7 @@ with tot as (
   on
     a.segmentId = p.id
   where
-    (
-      a.type in (
-        'issue-comment', 'issues-closed', 'issues-opened',
-        'pull_request-closed', 'pull_request-comment', 'pull_request-merged',
-        'pull_request-opened', 'pull_request-review-thread-comment', 'pull_request-reviewed'
-      ) or (
-        a.type in ('committed-commit', 'co-authored-commit', 'authored-commit')
-        and a.attributes->>'isMainBranch' = 'true'
-      )
-    )
+    a.type = 'pull_request-opened'
     and a.tenantId = {{tenant_id}}
     and a.deletedAt is null
     and a.timestamp >= {{date_from}}
@@ -52,15 +27,7 @@ with tot as (
     a.platform,
     a.username,
     m.is_bot,
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit', 'co-authored-commit') then a.sourceParentId else null end) as commits,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'issues-opened') as issues_opened,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'issues-closed') as issues_closed,
-    count(a.id) filter (where a.type in ('pull_request-comment','pull_request-review-thread-comment')) as pr_comments,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-reviewed') as pr_reviews,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-closed') as prs_closed,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-merged') as prs_merged,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-opened') as prs_opened,
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit', 'co-authored-commit') then a.sourceParentId else a.id::text end) as contributions
+    count(distinct split_part(a.url, '#', 1)) as contributions
   from
     activities a
   join
@@ -72,16 +39,7 @@ with tot as (
   on
     a.segmentId = p.id
   where
-    (
-      a.type in (
-        'issue-comment', 'issues-closed', 'issues-opened',
-        'pull_request-closed', 'pull_request-comment', 'pull_request-merged',
-        'pull_request-opened', 'pull_request-review-thread-comment', 'pull_request-reviewed'
-      ) or (
-        a.type in ('committed-commit', 'co-authored-commit', 'authored-commit')
-        and a.attributes->>'isMainBranch' = 'true'
-      )
-    )
+    a.type = 'pull_request-opened'
     and a.tenantId = {{tenant_id}}
     and a.deletedAt is null
     and a.timestamp >= {{date_from}}
@@ -101,15 +59,7 @@ with tot as (
     a.platform,
     a.username,
     m.is_bot,
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit', 'co-authored-commit') then a.sourceParentId else null end) as commits,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'issues-opened') as issues_opened,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'issues-closed') as issues_closed,
-    count(a.id) filter (where a.type in ('pull_request-comment','pull_request-review-thread-comment')) as pr_comments,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-reviewed') as pr_reviews,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-closed') as prs_closed,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-merged') as prs_merged,
-    count(distinct split_part(a.url, '#', 1)) filter (where a.type = 'pull_request-opened') as prs_opened,
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit', 'co-authored-commit') then a.sourceParentId else a.id::text end) as contributions
+    count(distinct split_part(a.url, '#', 1)) as contributions
   from
     activities a
   join
@@ -121,16 +71,7 @@ with tot as (
   on
     a.segmentId = p.id
   where
-    (
-      a.type in (
-        'issue-comment', 'issues-closed', 'issues-opened',
-        'pull_request-closed', 'pull_request-comment', 'pull_request-merged',
-        'pull_request-opened', 'pull_request-review-thread-comment', 'pull_request-reviewed'
-      ) or (
-        a.type in ('committed-commit', 'co-authored-commit', 'authored-commit')
-        and a.attributes->>'isMainBranch' = 'true'
-      )
-    )
+    a.type = 'pull_request-opened'
     and a.tenantId = {{tenant_id}}
     and a.deletedAt is null
     and a.timestamp >= {{date_from}}::timestamp - ({{date_to}}::timestamp - {{date_from}}::timestamp)
