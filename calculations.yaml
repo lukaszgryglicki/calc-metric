@@ -5,7 +5,7 @@ metrics:
     table: metric_contr_lead_nbot
     # project_slugs: top:10
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -16,7 +16,7 @@ metrics:
     metric: contr-lead-commits
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -27,7 +27,7 @@ metrics:
     metric: contr-lead-issues-closed
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -38,7 +38,7 @@ metrics:
     metric: contr-lead-issues-opened
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -49,7 +49,7 @@ metrics:
     metric: contr-lead-pr-comments
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -60,7 +60,7 @@ metrics:
     metric: contr-lead-pr-reviews
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -71,7 +71,7 @@ metrics:
     metric: contr-lead-prs-closed
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -82,7 +82,7 @@ metrics:
     metric: contr-lead-prs-opened
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
@@ -93,7 +93,7 @@ metrics:
     metric: contr-lead-prs-merged
     table: metric_contr_lead_nbot
     project_slugs: all
-    time_ranges: all
+    time_ranges: all-current
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'

@@ -251,6 +251,8 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 		// handle special 'ranges'
 		if ranges == "all" {
 			ranges = "7d,30d,q,ty,y,2y,a,7dp,30dp,qp,typ,yp,2yp"
+		} else if ranges == "all-current" {
+			ranges = "7d,30d,q,ty,y,2y,a"
 		}
 		rangesAry := strings.Split(ranges, ",")
 

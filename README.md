@@ -93,6 +93,7 @@ YAML file fields descripution:
   - Can also use `top:N`, for example `top:5` - it will return top 5 slugs by number of contributions for the last quarter then.
 - `time_ranges`:
   - Comma separated list of time ranges (`V3_TIME_RANGE`) to calculate or `all` which means all supported time ranges excluding `c` (custom).
+  - `all-current` means all current time rannges, excluding previous ones (with `p` suffix) and `c` (custom).
 	- Can be overwritten with `V3_TIME_RANGES` env variable.
 - `extra_params` - YAML map `k:v` with `V3_PARAM_` prefix skipped in keys, for example: `tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"`, `is_bot='!= true'`.
 - `extra_env` - YAML map `k:v` with `V3_` prefix skipped in keys, for example: `DEBUG=1`, `DATE_FROM=2023-10-01`, `DATE_TO=2023-11-01`.
