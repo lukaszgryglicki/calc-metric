@@ -339,10 +339,14 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 
 	// process tasks
 	thrN := getThreadsNum(debug, env)
+	numTasks := len(allTasks)
 	if thrN > 1 {
 		ch := make(chan error)
 		nThreads := 0
 		for i := range allTasks {
+			if i > 0 && i%50 == 0 {
+				lib.Logf("on %d/%d task\n", i, numTasks)
+			}
 			go processTask(ch, i, debug, calcBin, allTasks)
 			nThreads++
 			if nThreads == thrN {
@@ -365,6 +369,9 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 		}
 	} else {
 		for i := range allTasks {
+			if i > 0 && i%50 == 0 {
+				lib.Logf("on %d/%d task\n", i, numTasks)
+			}
 			err := processTask(nil, i, debug, calcBin, allTasks)
 			if err != nil {
 				lib.Logf("error: %+v\n", err)
