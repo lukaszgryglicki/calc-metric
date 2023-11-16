@@ -11,7 +11,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_commits_non_bots:
     metric: contr-lead-commits
     table: metric_contr_lead_nbot
@@ -22,7 +22,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_issues_closed_non_bots:
     metric: contr-lead-issues-closed
     table: metric_contr_lead_nbot
@@ -33,7 +33,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_issues_opened_non_bots:
     metric: contr-lead-issues-opened
     table: metric_contr_lead_nbot
@@ -44,7 +44,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_pr_comments_non_bots:
     metric: contr-lead-pr-comments
     table: metric_contr_lead_nbot
@@ -55,7 +55,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_pr_reviews_non_bots:
     metric: contr-lead-pr-reviews
     table: metric_contr_lead_nbot
@@ -66,7 +66,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_prs_closed_non_bots:
     metric: contr-lead-prs-closed
     table: metric_contr_lead_nbot
@@ -77,7 +77,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_prs_opened_non_bots:
     metric: contr-lead-prs-opened
     table: metric_contr_lead_nbot
@@ -88,7 +88,7 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
   contr_lead_prs_merged_non_bots:
     metric: contr-lead-prs-merged
     table: metric_contr_lead_nbot
@@ -99,4 +99,4 @@ metrics:
       is_bot: '!= true'
     extra_env:
       INDEXED_COLUMNS: 'metric'
-      LIMIT: '1000'
+      LIMIT: '200'
