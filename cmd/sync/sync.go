@@ -8,10 +8,12 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	snc "sync"
@@ -307,15 +309,33 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			for true {
 				time.Sleep(time.Duration(hbi) * time.Second)
 				gMtx.Lock()
-				lib.Logf("%d tasks processing\n", len(gProcessing))
+				lib.Logf("heartbeat %d tasks processing\n", len(gProcessing))
 				for idx, task := range gProcessing {
-					lib.Logf("heartbeat: task #%d\n", idx)
+					lib.Logf("running task #%d\n", idx)
 					lib.Logf("%s\n", prettyPrintTask(task))
 				}
+				lib.Logf("heartbeat ends\n")
 				gMtx.Unlock()
 			}
 		}()
 	}
+
+	// Signals
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGUSR1)
+	go func() {
+		for {
+			sig := <-sigs
+			gMtx.Lock()
+			lib.Logf("signal(%d): %d tasks processing\n", sig, len(gProcessing))
+			for idx, task := range gProcessing {
+				lib.Logf("running task #%d\n", idx)
+				lib.Logf("%s\n", prettyPrintTask(task))
+			}
+			lib.Logf("signal ends\n")
+			gMtx.Unlock()
+		}
+	}()
 
 	// process tasks
 	thrN := getThreadsNum(debug, env)
