@@ -9,3 +9,5 @@ metrics:
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
+    extra_env:
+      LIMIT: '1000'
