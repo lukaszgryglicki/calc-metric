@@ -47,7 +47,6 @@ Those parameters are optional:
 - `V3_DELETE` - `tr,ps,df,dt` - drop data from destination table for current calculation: each value `tr,ps,df,dt` specifies if `time_range, project_slug, date_from, date_to` keys should be used for deleting. This is to support data cleanup.
 - `V3_SQL_PATH` - path to metric SQL files, `./sql/` if not specified.
 - `V3_PARAM_xyz` - extra params to replace in `SQL` file, for example specifying `V3_PARAM_my_param=my_value` will replace `{{my_param}}` with `my_value` in metric's SQL file.
-- `V3_HEARTBEAT` - specify number of seconds for heartbeat.
 
 
 # Running calcmetric
@@ -81,6 +80,7 @@ This program uses the following environment variables:
 - `V3_YAML_PATH` - path to where `calculations.yaml` is, `./` if not specified.
 - `V3_BIN_PATH` - path to where `calcmetric` binary is, `./` if not specified.
 - `V3_THREADS` - specify number of threads to run in parallel (`sync` will invoke up to that many of `calcmetric` calls in parallel). Empty or zero or negative number will default to numbe rof CPU cores available.
+- `V3_HEARTBEAT` - specify number of seconds for heartbeat.
 
 
 YAML file fields descripution:
