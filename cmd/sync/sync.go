@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	snc "sync"
+
 	_ "github.com/lib/pq"
 	lib "github.com/lukaszgryglicki/calcmetric"
 	yaml "gopkg.in/yaml.v2"
@@ -27,7 +29,9 @@ var (
 	gRequired = []string{
 		"CONN",
 	}
-	gSlugsMap map[string][]string
+	gSlugsMap   map[string][]string
+	gMtx        *snc.Mutex
+	gProcessing map[int]map[string]string
 )
 
 // Metrics contain all metrics to calculate
@@ -282,6 +286,37 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(allTasks), func(i, j int) { allTasks[i], allTasks[j] = allTasks[j], allTasks[i] })
 
+	// Mutex
+	gMtx = &snc.Mutex{}
+	gProcessing = make(map[int]map[string]string)
+
+	// Heartbeat
+	hbi := 0
+	hb, ok := env["HEARTBEAT"]
+	if ok && hb != "" {
+		hb, err := strconv.Atoi(hb)
+		if err != nil {
+			return err
+		}
+		if hb > 0 {
+			hbi = hb
+		}
+	}
+	if hbi > 0 {
+		go func() {
+			for true {
+				time.Sleep(time.Duration(hbi) * time.Second)
+				gMtx.Lock()
+				lib.Logf("%d tasks processing\n", len(gProcessing))
+				for idx, task := range gProcessing {
+					lib.Logf("heartbeat: task #%d\n", idx)
+					lib.Logf("%s\n", prettyPrintTask(task))
+				}
+				gMtx.Unlock()
+			}
+		}()
+	}
+
 	// process tasks
 	thrN := getThreadsNum(debug, env)
 	if thrN > 1 {
@@ -319,7 +354,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	return nil
 }
 
-func prettyPrintTask(task map[string]string) {
+func prettyPrintTask(task map[string]string) string {
 	var msg string
 	offset := len(gPrefix)
 	ks := []string{}
@@ -330,14 +365,22 @@ func prettyPrintTask(task map[string]string) {
 	for _, k := range ks {
 		msg += fmt.Sprintf("\t%s: %+v\n", k[offset:], task[k])
 	}
-	lib.Logf(msg)
+	return msg
 }
 
 func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[string]string) error {
 	task := tasks[idx]
+	gMtx.Lock()
+	gProcessing[idx] = task
+	gMtx.Unlock()
+	defer func() {
+		gMtx.Lock()
+		delete(gProcessing, idx)
+		gMtx.Unlock()
+	}()
 	if debug {
-		lib.Logf("processing task #%d, details:\n", idx)
-		prettyPrintTask(task)
+		lib.Logf("starting task #%d, details:\n", idx)
+		lib.Logf("%s\n", prettyPrintTask(task))
 	}
 	var err error
 	dtStart := time.Now()
@@ -356,7 +399,7 @@ func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[
 		err = fmt.Errorf("%s", msg)
 	} else {
 		lib.Logf("task #%d finished in %v (skipped or no data: %v), details:\n", idx, took, skipped)
-		prettyPrintTask(task)
+		lib.Logf("%s\n", prettyPrintTask(task))
 	}
 	if debug {
 		lib.Logf("task #%d (%+v) executed (skipped or no data: %v), took: %v\noutput/stderr:\n%s\n", idx, task, skipped, dtEnd.Sub(dtStart), res)

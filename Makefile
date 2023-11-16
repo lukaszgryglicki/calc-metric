@@ -1,8 +1,11 @@
 GO_LIB_FILES=log.go time.go
 GO_BIN_FILES=cmd/calcmetric/calcmetric.go cmd/sync/sync.go
 GO_BIN_CMDS=github.com/lukaszgryglicki/calcmetric hithub.com/lukaszgryglicki/sync
-GO_ENV=CGO_ENABLED=0
-GO_BUILD=go build -ldflags '-s -w'
+#for race CGO_ENABLED=1
+GO_ENV=CGO_ENABLED=1
+# GO_ENV=CGO_ENABLED=0
+GO_BUILD=go build -ldflags '-s -w' -race
+# GO_BUILD=go build -ldflags '-s -w'
 GO_INSTALL=go install -ldflags '-s'
 GO_FMT=gofmt -s -w
 GO_LINT=golint -set_exit_status
