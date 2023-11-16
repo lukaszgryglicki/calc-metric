@@ -1,6 +1,6 @@
 with tot as (
   select
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit','co-authored-commit') then a.sourceParentId else a.id::text end) as contributions,
+    count(distinct split_part(a.url, '#', 1)) as contributions,
     count(distinct (memberId, platform, username)) as contributors
   from
     activities a
@@ -13,16 +13,7 @@ with tot as (
   on
     a.segmentId = p.id
   where
-    (
-      a.type in (
-        'issue-comment', 'issues-closed', 'issues-opened',
-        'pull_request-closed', 'pull_request-comment', 'pull_request-merged',
-        'pull_request-opened', 'pull_request-review-thread-comment', 'pull_request-reviewed'
-      ) or (
-        a.type in ('committed-commit', 'co-authored-commit', 'authored-commit')
-        and a.attributes->>'isMainBranch' = 'true'
-      )
-    )
+    a.type = 'issues-closed'
     and a.tenantId = {{tenant_id}}
     and a.deletedAt is null
     and a.timestamp >= {{date_from}}
@@ -36,7 +27,7 @@ with tot as (
     a.platform,
     a.username,
     m.is_bot,
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit','co-authored-commit') then a.sourceParentId else a.id::text end) as contributions
+    count(distinct split_part(a.url, '#', 1)) as contributions
   from
     activities a
   join
@@ -48,16 +39,7 @@ with tot as (
   on
     a.segmentId = p.id
   where
-    (
-      a.type in (
-        'issue-comment', 'issues-closed', 'issues-opened',
-        'pull_request-closed', 'pull_request-comment', 'pull_request-merged',
-        'pull_request-opened', 'pull_request-review-thread-comment', 'pull_request-reviewed'
-      ) or (
-        a.type in ('committed-commit', 'co-authored-commit', 'authored-commit')
-        and a.attributes->>'isMainBranch' = 'true'
-      )
-    )
+    a.type = 'issues-closed'
     and a.tenantId = {{tenant_id}}
     and a.deletedAt is null
     and a.timestamp >= {{date_from}}
@@ -77,7 +59,7 @@ with tot as (
     a.platform,
     a.username,
     m.is_bot,
-    count(distinct case when a.type = 'authored-commit' then a.sourceId when a.type in ('committed-commit','co-authored-commit') then a.sourceParentId else a.id::text end) as contributions
+    count(distinct split_part(a.url, '#', 1)) as contributions
   from
     activities a
   join
@@ -89,16 +71,7 @@ with tot as (
   on
     a.segmentId = p.id
   where
-    (
-      a.type in (
-        'issue-comment', 'issues-closed', 'issues-opened',
-        'pull_request-closed', 'pull_request-comment', 'pull_request-merged',
-        'pull_request-opened', 'pull_request-review-thread-comment', 'pull_request-reviewed'
-      ) or (
-        a.type in ('committed-commit', 'co-authored-commit', 'authored-commit')
-        and a.attributes->>'isMainBranch' = 'true'
-      )
-    )
+    a.type = 'issues-closed'
     and a.tenantId = {{tenant_id}}
     and a.deletedAt is null
     and a.timestamp >= {{date_from}}::timestamp - ({{date_to}}::timestamp - {{date_from}}::timestamp)
@@ -114,6 +87,7 @@ with tot as (
     m.is_bot
 )
 select
+  'issues-closed' as metric,
   c.logo_url,
   c.memberId,
   c.platform,

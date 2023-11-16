@@ -1,7 +1,7 @@
 ---
 metrics:
   contr_lead_acts_non_bots:
-    metric: contr-lead-acts-all
+    metric: contr-lead-activities
     table: metric_contr_lead_acts_nbot
     # project_slugs: top:10
     project_slugs: all
@@ -10,4 +10,5 @@ metrics:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'
     extra_env:
+      INDEXED_COLUMNS: 'metric'
       LIMIT: '1000'

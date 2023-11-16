@@ -15,7 +15,7 @@ import (
 
 const (
 	gPrefix          = "V3_"
-	gMaxPlaceholders = 10000
+	gMaxPlaceholders = 0x8000
 )
 
 var (
@@ -137,6 +137,10 @@ func supportDelete(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt ti
 	delMap := make(map[string]struct{})
 	for _, k := range delAry {
 		delMap[k] = struct{}{}
+	}
+	if len(delMap) <= 0 {
+		lib.Logf("unconditioned DELETE is not suppored - you probably mean something else, use DROP to do a full table delete instead\n")
+		return false
 	}
 	args := []interface{}{}
 	delQuery := fmt.Sprintf(`delete from "%s"`, table)
