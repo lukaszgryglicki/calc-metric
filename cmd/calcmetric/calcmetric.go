@@ -128,6 +128,34 @@ func dbTypeName(column *sql.ColumnType, env map[string]string) (string, error) {
 	}
 }
 
+func supportCleanup(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt time.Time, debug bool, env map[string]string) {
+	cl, clOK := env["CLEANUP"]
+	if !clOK || cl == "" {
+		return
+	}
+	dtf = lib.DayStart(dtf)
+	dtt = lib.DayStart(dtt)
+	delQuery := fmt.Sprintf(
+		`delete from "%s" where time_range = $1 and project_slug = $2 and date_from < $3 and date_to < $4 and date(last_calculated_at) < date(now())`,
+		table,
+	)
+	args := []interface{}{timeRange, projectSlug, dtf, dtt}
+	if debug {
+		lib.Logf("cleanup: delete from table:\n%s\n%+v\n", delQuery, args)
+	}
+	res, err := db.Exec(delQuery, args...)
+	if err != nil {
+		lib.Logf("error: %+v\n", err)
+		queryOut(delQuery, args...)
+		return
+	}
+	rows, err := res.RowsAffected()
+	if err == nil && rows > 0 {
+		lib.Logf("cleanup %d rows from \"%s\"(%s, %s, <%+v, <%+v)\n", rows, table, projectSlug, timeRange, dtf, dtt)
+	}
+	return
+}
+
 func supportDelete(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt time.Time, debug bool, env map[string]string) bool {
 	del, delOK := env["DELETE"]
 	if !delOK || del == "" {
@@ -182,7 +210,7 @@ func supportDelete(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt ti
 	res, err := db.Exec(delQuery, args...)
 	if err != nil {
 		lib.Logf("error: %+v\n", err)
-		queryOut(delQuery, args)
+		queryOut(delQuery, args...)
 		return false
 	}
 	rows, err := res.RowsAffected()
@@ -577,6 +605,8 @@ func needsCalculation(db *sql.DB, table, projectSlug, timeRange string, debug bo
 		if err != nil {
 			return true, dtf, tm, err
 		}
+		dtf = lib.DayStart(dtf)
+		dtt = lib.DayStart(dtt)
 		isCalc, err := isCalculated(db, table, projectSlug, timeRange, debug, env, dtf, dtt)
 		if err != nil {
 			return true, dtf, dtt, err
@@ -701,6 +731,7 @@ func calcMetric() error {
 	if err != nil {
 		return err
 	}
+	supportCleanup(db, table, timeRange, projectSlug, dtf, dtt, debug, env)
 	return nil
 }
 

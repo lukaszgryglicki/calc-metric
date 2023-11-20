@@ -5,12 +5,13 @@ then
   exit 1
 fi
 export V3_METRIC=contr-lead-activities
-export V3_TABLE=metric_contr_lead_acts
+export V3_TABLE=metric_contr_lead_nbot
 export V3_PROJECT_SLUG=envoy
 export V3_TIME_RANGE=7d
 export V3_PARAM_tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
 export V3_PARAM_is_bot='!= true'
-export V3_LIMIT=1000
+export V3_LIMIT=200
+# export V3_CLEANUP=y
 # export V3_INDEXED_COLUMNS='is_bot,username,memberid,platform'
 # export V3_PPT=y
 # export V3_METRIC=contr-lead-acts-total
