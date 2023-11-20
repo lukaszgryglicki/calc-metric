@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
@@ -32,24 +31,6 @@ var (
 	gFinalState = 0
 )
 
-func queryOut(query string, args ...interface{}) {
-	lib.Logf("%s\n", query)
-	if len(args) > 0 {
-		s := ""
-		for vi, vv := range args {
-			switch v := vv.(type) {
-			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, complex64, complex128, string, bool, time.Time:
-				s += fmt.Sprintf("%d:%+v ", vi+1, v)
-			case nil:
-				s += fmt.Sprintf("%d:(null) ", vi+1)
-			default:
-				s += fmt.Sprintf("%d:%+v ", vi+1, reflect.ValueOf(vv))
-			}
-		}
-		lib.Logf("[%s]\n", s)
-	}
-}
-
 func toDBIdentifier(arg string) string {
 	return strings.Replace(strings.ToLower(arg), "-", "_", -1)
 }
@@ -75,10 +56,10 @@ func isCalculated(db *sql.DB, table, projectSlug, timeRange string, debug bool, 
 				lib.Logf("table '%s' does not exist yet, so we need to calculate this metric.\n", table)
 				return false, nil
 			}
-			queryOut(sqlQuery, args...)
+			lib.QueryOut(sqlQuery, args...)
 			return false, err
 		default:
-			queryOut(sqlQuery, args...)
+			lib.QueryOut(sqlQuery, args...)
 			return false, err
 		}
 	}
@@ -146,7 +127,7 @@ func supportCleanup(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt t
 	res, err := db.Exec(delQuery, args...)
 	if err != nil {
 		lib.Logf("error: %+v\n", err)
-		queryOut(delQuery, args...)
+		lib.QueryOut(delQuery, args...)
 		return
 	}
 	rows, err := res.RowsAffected()
@@ -210,7 +191,7 @@ func supportDelete(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt ti
 	res, err := db.Exec(delQuery, args...)
 	if err != nil {
 		lib.Logf("error: %+v\n", err)
-		queryOut(delQuery, args...)
+		lib.QueryOut(delQuery, args...)
 		return false
 	}
 	rows, err := res.RowsAffected()
@@ -223,7 +204,7 @@ func supportDelete(db *sql.DB, table, timeRange, projectSlug string, dtf, dtt ti
 func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo string, ppt, debug bool, env map[string]string) error {
 	rows, err := db.Query(sqlQuery)
 	if err != nil {
-		queryOut(sqlQuery, []interface{}{}...)
+		lib.QueryOut(sqlQuery, []interface{}{}...)
 		return err
 	}
 	defer func() { _ = rows.Close() }()
@@ -310,7 +291,7 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 	}
 	_, err = db.Exec(createTable)
 	if err != nil {
-		queryOut(createTable, []interface{}{}...)
+		lib.QueryOut(createTable, []interface{}{}...)
 		return err
 	}
 	i := 0
@@ -395,12 +376,12 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 			var rslt sql.Result
 			rslt, err = db.Exec(query, args...)
 			if err != nil {
-				queryOut(query, args...)
+				lib.QueryOut(query, args...)
 				return err
 			}
 			nRows, err := rslt.RowsAffected()
 			if err != nil {
-				queryOut(query, args...)
+				lib.QueryOut(query, args...)
 				return err
 			}
 			if !changes && nRows > 0 {
@@ -445,12 +426,12 @@ func calculate(db *sql.DB, sqlQuery, table, projectSlug, timeRange, dtFrom, dtTo
 		var rslt sql.Result
 		rslt, err = db.Exec(query, args...)
 		if err != nil {
-			queryOut(query, args...)
+			lib.QueryOut(query, args...)
 			return err
 		}
 		nRows, err := rslt.RowsAffected()
 		if err != nil {
-			queryOut(query, args...)
+			lib.QueryOut(query, args...)
 			return err
 		}
 		if !changes && nRows > 0 {
@@ -662,7 +643,7 @@ func calcMetric() error {
 		}
 		_, err = db.Exec(dropTable)
 		if err != nil {
-			queryOut(dropTable, []interface{}{}...)
+			lib.QueryOut(dropTable, []interface{}{}...)
 			return err
 		}
 	}

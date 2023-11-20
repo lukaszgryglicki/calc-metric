@@ -82,6 +82,7 @@ This program uses the following environment variables:
 - `V3_BIN_PATH` - path to where `calcmetric` binary is, `./` if not specified.
 - `V3_THREADS` - specify number of threads to run in parallel (`sync` will invoke up to that many of `calcmetric` calls in parallel). Empty or zero or negative number will default to numbe rof CPU cores available.
 - `V3_HEARTBEAT` - specify number of seconds for heartbeat.
+- `V3_DRY_RUN` - run in dry-run mode - it will do all, excluding the actual task executions. It will assume they succeeded.
 
 
 YAML file fields descripution:
@@ -98,11 +99,16 @@ YAML file fields descripution:
 	- Can be overwritten with `V3_TIME_RANGES` env variable.
 - `extra_params` - YAML map `k:v` with `V3_PARAM_` prefix skipped in keys, for example: `tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"`, `is_bot='!= true'`.
 - `extra_env` - YAML map `k:v` with `V3_` prefix skipped in keys, for example: `DEBUG=1`, `DATE_FROM=2023-10-01`, `DATE_TO=2023-11-01`.
+- `max_frequency`:
+  - specify how often given metric should be run, you can spacify any golang duration for this, for example `48h`.
+  - it will check if last successful sync was `> 2 days/48 hours ago` and only run if this is true.
+  - if this is not set, then no frequency check will be made.
+  - it uses `metric_last_sync(metric_name, last_synced_at)` table for this.
 
 
 Example run:
 - Create your own `REPLICA.secret` - it is gitignored in the repo, you can yse `REPLICA.secret.example` file as a starting point.
-- `V3_CONN=[redacted] ./sync.sh` - this runs example sync, or: `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``.
+- `[V3_DRY_RUN=y] V3_CONN=[redacted] ./sync.sh` - this runs example sync, or: `` V3_DRY_RUN=y V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``.
 - Other example YAMLS are in `./examples/yaml/*.yaml`.
 
 # Full example how to get contributor leaderboard
@@ -167,7 +173,7 @@ You can see that this table already has:
 # Bulk calclations
 
 We can also mass-calculate this for multiple projects at once using `sync` tool ([source](https://github.com/lukaszgryglicki/calcmetric/blob/main/cmd/sync/sync.go)):
-- You run `` V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``. [sync.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/sync.sh).
+- You run `` [V3_DRY_RUN=y] V3_CONN="`cat ./REPLICA.secret`" ./sync.sh ``. [sync.sh](https://github.com/lukaszgryglicki/calcmetric/blob/main/sync.sh).
 - It uses [calculations.yaml](https://github.com/lukaszgryglicki/calcmetric/blob/main/calculations.yaml) file that instructs `sync` tool about how shoudl it call `calcmetric` for multiple prohects/time-ranges, etc., thsi si the example contents:
 ```
 ---
@@ -177,6 +183,7 @@ metrics:
     table: metric_contr_lead_nbot
     project_slugs: all
     time_ranges: all-current
+    max_frequency: "48h"
     extra_params:
       tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
       is_bot: '!= true'

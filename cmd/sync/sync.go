@@ -18,7 +18,7 @@ import (
 
 	snc "sync"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	lib "github.com/lukaszgryglicki/calcmetric"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -31,9 +31,10 @@ var (
 	gRequired = []string{
 		"CONN",
 	}
-	gSlugsMap   map[string][]string
-	gMtx        *snc.Mutex
-	gProcessing map[int]map[string]string
+	gSlugsMap    map[string][]string
+	gMtx         *snc.Mutex
+	gProcessing  map[int]map[string]string
+	gTaskIndices map[string]map[int]struct{}
 )
 
 // Metrics contain all metrics to calculate
@@ -54,6 +55,9 @@ type Metric struct {
 	TimeRanges  string            `yaml:"time_ranges"`  // Comma separated list of time ranges (V3_TIME_RANGE) to calculate or "all" which means all supported time ranges
 	ExtraParams map[string]string `yaml:"extra_params"` // map k:v with `V3_PARAM_` prefix skipped in keys, for example: tenant_id="'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'", is_bot='!= true'
 	ExtraEnv    map[string]string `yaml:"extra_env"`    // map k:v with `V3_` prefix skipped in keys, for example: DEBUG=1 DATE_FROM=2023-10-01 DATE_TO=2023-11-01
+	// Specify how often given metric should be run, you can spacify any golang duration for this, for example "48h"
+	// it will check if last successful sync was > "48h" ago and only run then.
+	MaxFrequency string `yaml:"max_frequency"`
 }
 
 func getQuerySlugs(db *sql.DB, debug bool, query string) ([]string, error) {
@@ -190,6 +194,84 @@ func getThreadsNum(debug bool, env map[string]string) int {
 	return thrN
 }
 
+func createMetricLastSyncTable(db *sql.DB) error {
+	createTable := `create table metric_last_sync(
+  metric_name text not null,
+  last_synced_at timestamp not null,
+  primary key(metric_name)
+);
+  `
+	_, err := db.Exec(createTable)
+	if err != nil {
+		lib.QueryOut(createTable, []interface{}{}...)
+		return err
+	}
+	return nil
+}
+
+func markAsDone(db *sql.DB, task string) {
+	// insert into metric_last_sync(metric_name, last_synced_at) values ('metric-name', now()) on conflict(metric_name) do update set last_synced_at = excluded.last_synced_at;
+	sqlQuery := `insert into metric_last_sync(metric_name, last_synced_at) values ($1, now()) on conflict(metric_name) do update set last_synced_at = excluded.last_synced_at`
+	args := []interface{}{task}
+	_, err := db.Exec(sqlQuery, args...)
+	if err != nil {
+		lib.Logf("error setting last_synced_at for '%s': %+v\n", task, err)
+		lib.QueryOut(sqlQuery, args...)
+	}
+}
+
+// returns last synced date and whatever we need to do sync now or not
+func checkFrequency(db *sql.DB, task string, freq time.Duration, debug bool) (time.Time, bool, error) {
+	// metric_last_sync(metric_name, last_synced_at)
+	now := time.Now()
+	sqlQuery := `select last_synced_at from metric_last_sync where metric_name = $1`
+	args := []interface{}{task}
+	if debug {
+		lib.Logf("executing sql: %s\nwith args: %+v\n", sqlQuery, args)
+	}
+	rows, err := db.Query(sqlQuery, args...)
+	if err != nil {
+		switch e := err.(type) {
+		case *pq.Error:
+			errName := e.Code.Name()
+			if errName == "undefined_table" {
+				lib.Logf("table metric_last_sync does not exist yet, creating it and assuming nothing was synced yet.\n")
+				err := createMetricLastSyncTable(db)
+				return now, true, err
+			}
+			lib.QueryOut(sqlQuery, args...)
+			return now, true, err
+		default:
+			lib.QueryOut(sqlQuery, args...)
+			return now, true, err
+		}
+	}
+	defer func() { _ = rows.Close() }()
+	var (
+		lastCalc time.Time
+		fetched  bool
+	)
+	for rows.Next() {
+		err := rows.Scan(&lastCalc)
+		if err != nil {
+			return now, true, err
+		}
+		fetched = true
+	}
+	err = rows.Err()
+	if err != nil {
+		return now, true, err
+	}
+	if fetched {
+		age := now.Sub(lastCalc)
+		needsRecalc := age > freq
+		lib.Logf("last calcualted date for '%s' metric is %+v, this gives %+v age, frequency is %+v, so need recalc is %v\n", task, lastCalc, age, freq, needsRecalc)
+		return lastCalc, needsRecalc, nil
+	}
+	lib.Logf("there is no calculated report for '%s' metric yet, assuming it needs calculations\n", task)
+	return now, true, nil
+}
+
 func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) error {
 	path, ok := env["BIN_PATH"]
 	if !ok {
@@ -200,7 +282,24 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 		lib.Logf("will use '%s' binary to calculate metrics\n", calcBin)
 	}
 	allTasks := []map[string]string{}
-	for _, taskDef := range metrics.Metrics {
+	for taskName, taskDef := range metrics.Metrics {
+		// Check frequency from "metric_last_sync" table if defined
+		maxFreq := strings.TrimSpace(taskDef.MaxFrequency)
+		if maxFreq != "" {
+			freq, err := time.ParseDuration(maxFreq)
+			if err != nil {
+				return err
+			}
+			lastRun, shouldRun, err := checkFrequency(db, taskName, freq, debug)
+			if err != nil {
+				return err
+			}
+			if !shouldRun {
+				lib.Logf("skipping running '%s' due to frequency check: %s/%+v, last run: %+v\n", taskName, maxFreq, freq, lastRun)
+				continue
+			}
+		}
+
 		task := make(map[string]string)
 		// Basics
 		task[gPrefix+"METRIC"] = taskDef.Metric
@@ -275,6 +374,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 				}
 				newTask[gPrefix+"TIME_RANGE"] = rng
 				newTask[gPrefix+"PROJECT_SLUG"] = slug
+				newTask["TASK_NAME"] = taskName
 				allTasks = append(allTasks, newTask)
 			}
 		}
@@ -289,6 +389,20 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	// seems to be faster when running using multiple threads
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(allTasks), func(i, j int) { allTasks[i], allTasks[j] = allTasks[j], allTasks[i] })
+
+	// handle lists of indices per task name, to know when a given task is fully finished
+	gTaskIndices = make(map[string]map[int]struct{})
+	for i, task := range allTasks {
+		taskName := task["TASK_NAME"]
+		_, ok := gTaskIndices[taskName]
+		if !ok {
+			gTaskIndices[taskName] = make(map[int]struct{})
+		}
+		gTaskIndices[taskName][i] = struct{}{}
+	}
+	if debug {
+		lib.Logf("task name to index mapping:\n%+v\n", gTaskIndices)
+	}
 
 	// Mutex
 	gMtx = &snc.Mutex{}
@@ -339,6 +453,11 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 		}
 	}()
 
+	_, dryRun := env["DRY_RUN"]
+	if dryRun {
+		lib.Logf("running in dry-run mode.\n")
+	}
+
 	// process tasks
 	thrN := getThreadsNum(debug, env)
 	numTasks := len(allTasks)
@@ -349,7 +468,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			if i > 0 && i%50 == 0 {
 				lib.Logf("on %d/%d task\n", i, numTasks)
 			}
-			go processTask(ch, i, debug, calcBin, allTasks)
+			go processTask(ch, db, i, debug, dryRun, calcBin, allTasks)
 			nThreads++
 			if nThreads == thrN {
 				err := <-ch
@@ -360,11 +479,14 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			}
 		}
 		if debug {
-			lib.Logf("Final threads join\n")
+			lib.Logf("Final %d threads join\n", nThreads)
 		}
 		for nThreads > 0 {
 			err := <-ch
 			nThreads--
+			if debug {
+				lib.Logf("%d threads left\n", nThreads)
+			}
 			if err != nil {
 				lib.Logf("error: %+v\n", err)
 			}
@@ -374,7 +496,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			if i > 0 && i%50 == 0 {
 				lib.Logf("on %d/%d task\n", i, numTasks)
 			}
-			err := processTask(nil, i, debug, calcBin, allTasks)
+			err := processTask(nil, db, i, debug, dryRun, calcBin, allTasks)
 			if err != nil {
 				lib.Logf("error: %+v\n", err)
 			}
@@ -387,7 +509,11 @@ func prettyPrintTask(task map[string]string) string {
 	var msg string
 	offset := len(gPrefix)
 	ks := []string{}
-	for k := range task {
+	for k, v := range task {
+		if k == "TASK_NAME" {
+			msg = k + ":" + v
+			continue
+		}
 		ks = append(ks, k)
 	}
 	sort.Strings(ks)
@@ -397,27 +523,50 @@ func prettyPrintTask(task map[string]string) string {
 	return msg
 }
 
-func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[string]string) error {
+func processTask(ch chan error, db *sql.DB, idx int, debug, dryRun bool, binCmd string, tasks []map[string]string) error {
+	var (
+		res     string
+		skipped bool
+		err     error
+	)
 	task := tasks[idx]
+	taskName := task["TASK_NAME"]
 	gMtx.Lock()
 	gProcessing[idx] = task
 	gMtx.Unlock()
 	defer func() {
 		gMtx.Lock()
+		defer func() {
+			gMtx.Unlock()
+			if ch != nil {
+				ch <- err
+			}
+		}()
 		delete(gProcessing, idx)
-		gMtx.Unlock()
+		_, ok := gTaskIndices[taskName]
+		if ok {
+			delete(gTaskIndices[taskName], idx)
+			if len(gTaskIndices[taskName]) == 0 {
+				lib.Logf("task group '%s' done\n", taskName)
+				markAsDone(db, taskName)
+				lib.Logf("task group '%s' marked done\n", taskName)
+			}
+		}
 	}()
 	if debug {
 		lib.Logf("starting task #%d, details:\n", idx)
 		lib.Logf("%s\n", prettyPrintTask(task))
 	}
-	var err error
 	dtStart := time.Now()
-	res, skipped, err := execCommand(
-		debug,
-		[]string{binCmd},
-		task,
-	)
+	if dryRun {
+		res, skipped, err = "dry-run", false, nil
+	} else {
+		res, skipped, err = execCommand(
+			debug,
+			[]string{binCmd},
+			task,
+		)
+	}
 	dtEnd := time.Now()
 	took := dtEnd.Sub(dtStart)
 	if err != nil {
@@ -432,9 +581,6 @@ func processTask(ch chan error, idx int, debug bool, binCmd string, tasks []map[
 	}
 	if debug {
 		lib.Logf("task #%d (%+v) executed (skipped or no data: %v), took: %v\noutput/stderr:\n%s\n", idx, task, skipped, dtEnd.Sub(dtStart), res)
-	}
-	if ch != nil {
-		ch <- err
 	}
 	return err
 }
