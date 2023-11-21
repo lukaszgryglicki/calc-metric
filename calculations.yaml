@@ -1,112 +1,16 @@
 ---
 metrics:
-  contr_lead_acts_non_bots:
-    metric: contr-lead-activities
-    table: metric_contr_lead_nbot
-    # project_slugs: top:10
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_commits_non_bots:
-    metric: contr-lead-commits
-    table: metric_contr_lead_nbot
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_issues_closed_non_bots:
-    metric: contr-lead-issues-closed
-    table: metric_contr_lead_nbot
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_issues_opened_non_bots:
-    metric: contr-lead-issues-opened
-    table: metric_contr_lead_nbot
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_pr_comments_non_bots:
-    metric: contr-lead-pr-comments
-    table: metric_contr_lead_nbot
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_pr_reviews_non_bots:
-    metric: contr-lead-pr-reviews
-    table: metric_contr_lead_nbot
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_prs_closed_non_bots:
-    metric: contr-lead-prs-closed
-    table: metric_contr_lead_nbot
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_prs_opened_non_bots:
-    metric: contr-lead-prs-opened
-    table: metric_contr_lead_nbot
-    project_slugs: all
-    time_ranges: all-current
-    max_frequency: 48h
-    extra_params:
-      tenant_id: "'875c38bd-2b1b-4e91-ad07-0cfbabb4c49f'"
-      is_bot: '!= true'
-    extra_env:
-      INDEXED_COLUMNS: 'metric'
-      LIMIT: '200'
-      CLEANUP: y
-  contr_lead_prs_merged_non_bots:
-    metric: contr-lead-prs-merged
+  contr_leads_nb:
+    metrics:
+      - contr-lead-activities
+      - contr-lead-commits
+      - contr-lead-issues-close
+      - contr-lead-issues-opened
+      - contr-lead-pr-comments
+      - contr-lead-pr-reviews
+      - contr-lead-prs-closed
+      - contr-lead-prs-opened
+      - contr-lead-prs-merged
     table: metric_contr_lead_nbot
     project_slugs: all
     time_ranges: all-current

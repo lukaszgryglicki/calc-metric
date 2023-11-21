@@ -45,8 +45,8 @@ type Metrics struct {
 // Metric contains details about how given metric shoudl be calculated
 // More details in README.md
 type Metric struct {
-	Metric string `yaml:"metric"` // Maps to V3_METRIC
-	Table  string `yaml:"table"`  // Maps to V3_TABLE
+	Metrics []string `yaml:"metrics"` // Maps to V3_METRIC - array of strings - there can be > 1 metric to be calculated for this
+	Table   string   `yaml:"table"`   // Maps to V3_TABLE
 	// Can be overwritten with V3_PROJECT_SLUGS env variable
 	// Can also use "all" which connects to DB and gets all slugs using built-in SQL command
 	// Can also use "top:N", for example "top:5" - it will return top 5 slugs by number of contributions for all time then.
@@ -211,6 +211,7 @@ func createMetricLastSyncTable(db *sql.DB) error {
 
 func markAsDone(db *sql.DB, task string) {
 	// insert into metric_last_sync(metric_name, last_synced_at) values ('metric-name', now()) on conflict(metric_name) do update set last_synced_at = excluded.last_synced_at;
+	// metric_name is: key:table:metric (key - calculations.yaml metric key/name, table: given key's entry table, metric: given key's entry one of metrics values.
 	sqlQuery := `insert into metric_last_sync(metric_name, last_synced_at) values ($1, now()) on conflict(metric_name) do update set last_synced_at = excluded.last_synced_at`
 	args := []interface{}{task}
 	_, err := db.Exec(sqlQuery, args...)
@@ -283,6 +284,12 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	}
 	allTasks := []map[string]string{}
 	for taskName, taskDef := range metrics.Metrics {
+		// Task table
+		table := taskDef.Table
+
+		// Metrics to run
+		var metrics []string
+
 		// Check frequency from "metric_last_sync" table if defined
 		maxFreq := strings.TrimSpace(taskDef.MaxFrequency)
 		if maxFreq != "" {
@@ -290,20 +297,25 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			if err != nil {
 				return err
 			}
-			lastRun, shouldRun, err := checkFrequency(db, taskName, freq, debug)
-			if err != nil {
-				return err
+			for _, metric := range taskDef.Metrics {
+				metricName := strings.TrimSpace(metric)
+				tName := taskName + ":" + table + ":" + metricName
+				lastRun, shouldRun, err := checkFrequency(db, tName, freq, debug)
+				if err != nil {
+					return err
+				}
+				if !shouldRun {
+					lib.Logf("skipping running '%s' due to frequency check: %s/%+v, last run: %+v\n", taskName, maxFreq, freq, lastRun)
+					continue
+				}
+				metrics = append(metrics, metricName)
 			}
-			if !shouldRun {
-				lib.Logf("skipping running '%s' due to frequency check: %s/%+v, last run: %+v\n", taskName, maxFreq, freq, lastRun)
-				continue
-			}
+		} else {
+			metrics = taskDef.Metrics
 		}
 
+		// Task
 		task := make(map[string]string)
-		// Basics
-		task[gPrefix+"METRIC"] = taskDef.Metric
-		task[gPrefix+"TABLE"] = taskDef.Table
 
 		// Slugs
 		slugs := taskDef.ProjectSlugs
@@ -365,17 +377,30 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			task[gPrefix+k] = v
 		}
 
-		for _, slug := range slugsAry {
-			for _, rng := range rangesAry {
-				// Final task to execute
-				newTask := make(map[string]string)
-				for k, v := range task {
-					newTask[k] = v
+		// Table
+		task[gPrefix+"TABLE"] = table
+
+		// Main loop creating all tasks to execute
+		nMetrics := len(metrics)
+		nSlugs := len(slugsAry)
+		nRanges := len(rangesAry)
+		nItems := nMetrics * nSlugs * nRanges
+		lib.Logf("entry '%s' has %d metrics, %d project slugs, %d time-ranges ranges: %d tasks\n", taskName, nMetrics, nSlugs, nRanges, nItems)
+		for _, metric := range metrics {
+			metricName := strings.TrimSpace(metric)
+			for _, slug := range slugsAry {
+				for _, rng := range rangesAry {
+					// Final task to execute
+					newTask := make(map[string]string)
+					for k, v := range task {
+						newTask[k] = v
+					}
+					newTask[gPrefix+"METRIC"] = metricName
+					newTask[gPrefix+"TIME_RANGE"] = rng
+					newTask[gPrefix+"PROJECT_SLUG"] = slug
+					newTask["TASK_NAME"] = taskName + ":" + table + ":" + metricName
+					allTasks = append(allTasks, newTask)
 				}
-				newTask[gPrefix+"TIME_RANGE"] = rng
-				newTask[gPrefix+"PROJECT_SLUG"] = slug
-				newTask["TASK_NAME"] = taskName
-				allTasks = append(allTasks, newTask)
 			}
 		}
 	}
@@ -511,7 +536,7 @@ func prettyPrintTask(task map[string]string) string {
 	ks := []string{}
 	for k, v := range task {
 		if k == "TASK_NAME" {
-			msg = k + ":" + v
+			msg = v
 			continue
 		}
 		ks = append(ks, k)
@@ -547,9 +572,8 @@ func processTask(ch chan error, db *sql.DB, idx int, debug, dryRun bool, binCmd 
 		if ok {
 			delete(gTaskIndices[taskName], idx)
 			if len(gTaskIndices[taskName]) == 0 {
-				lib.Logf("task group '%s' done\n", taskName)
 				markAsDone(db, taskName)
-				lib.Logf("task group '%s' marked done\n", taskName)
+				lib.Logf("task group '%s' done\n", taskName)
 			}
 		}
 	}()

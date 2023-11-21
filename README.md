@@ -86,7 +86,7 @@ This program uses the following environment variables:
 
 
 YAML file fields descripution:
-- `metric` - Maps to `calcmetric`'s `V3_METRIC`. Metric SQL file to use.
+- `metrics` - Maps to `calcmetric`'s `V3_METRIC`. Array of metric SQL files to use.
 - `table` - Maps to `V3_TABLE` - table to save data to.
 - `project_slugs`:
   - Comma separated list of `V3_PROJECT_SLUG` values, can also be SQL like `"sql:select distinct project_slug from mv_subprojects"`.
@@ -104,6 +104,10 @@ YAML file fields descripution:
   - it will check if last successful sync was `> 2 days/48 hours ago` and only run if this is true.
   - if this is not set, then no frequency check will be made.
   - it uses `metric_last_sync(metric_name, last_synced_at)` table for this.
+  - `metric_name` is: `key:table:metric` - for example for our `calculations.yaml`: `contr_leads_nb:metric_contr_lead_nbot:contr-lead-commits`:
+    - `key`: calculations.yaml metric key/name.
+    - `table`: given key's entry table.
+    - `metric`: given key's entry one of metrics values.
 
 
 Example run:
@@ -179,7 +183,7 @@ We can also mass-calculate this for multiple projects at once using `sync` tool 
 ---
 metrics:
   contr_lead_acts_non_bots:
-    metric: contr-lead-activities
+    metrics: [contr-lead-activities]
     table: metric_contr_lead_nbot
     project_slugs: all
     time_ranges: all-current
