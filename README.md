@@ -305,3 +305,10 @@ Example results:
  sogno                | 7d         |       9 |       9 | 2023-11-15 14:42:51.449673 |                50 |                9 |    11.1111111111111116 |      83.3333333333333333
 (50 rows)
 ```
+
+
+# Running via crontab
+
+There is a `run_sync.sh` script that can be used for runnign via a cron job. It must be present in system cron's PATH (for example `/usr/bin` directory).
+
+Use `sync.crontab` file as a starting point for adding a cronjob via `crontab -e`.

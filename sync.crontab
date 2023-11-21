@@ -1,0 +1,1 @@
+0 0 * * * VERBOSE=1 CWD=/root/go/src/github.com/lukaszgryglicki/calcmetric /usr/local/bin/run_sync.sh ./sync.sh /tmp/calcmetric_sync.log >> /tmp/calcmetric_sync.log 2>&1

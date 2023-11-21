@@ -1,6 +1,11 @@
 #!/bin/bash
 if [ -z "${V3_CONN}" ]
 then
+  echo "$0: attempting to get V3_CONN from the REPLICA.secret file."
+  export V3_CONN="`cat ./REPLICA.secret`"
+fi
+if [ -z "${V3_CONN}" ]
+then
   echo "$0: you must specify V3_CONN='db connect string'"
   exit 1
 fi

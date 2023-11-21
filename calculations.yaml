@@ -4,7 +4,7 @@ metrics:
     metrics:
       - contr-lead-activities
       - contr-lead-commits
-      - contr-lead-issues-close
+      - contr-lead-issues-closed
       - contr-lead-issues-opened
       - contr-lead-pr-comments
       - contr-lead-pr-reviews
