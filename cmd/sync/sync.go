@@ -467,7 +467,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 				lib.Logf("heartbeat %d tasks processing\n", len(gProcessing))
 				for idx, task := range gProcessing {
 					lib.Logf("running task #%d\n", idx)
-					lib.Logf("%s\n", prettyPrintTask(task))
+					lib.Logf("%s\n", prettyPrintTask(idx, task))
 				}
 				lib.Logf("heartbeat ends\n")
 				gMtx.Unlock()
@@ -485,7 +485,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			lib.Logf("signal(%d): %d tasks processing\n", sig, len(gProcessing))
 			for idx, task := range gProcessing {
 				lib.Logf("running task #%d\n", idx)
-				lib.Logf("%s\n", prettyPrintTask(task))
+				lib.Logf("%s\n", prettyPrintTask(idx, task))
 			}
 			lib.Logf("signal ends\n")
 			gMtx.Unlock()
@@ -544,20 +544,21 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	return nil
 }
 
-func prettyPrintTask(task map[string]string) string {
+func prettyPrintTask(idx int, task map[string]string) string {
 	var msg string
 	offset := len(gPrefix)
 	ks := []string{}
+	ti := "#" + strconv.Itoa(idx) + ":"
 	for k, v := range task {
 		if k == "TASK_NAME" {
-			msg = v
+			msg = ti + v
 			continue
 		}
 		ks = append(ks, k)
 	}
 	sort.Strings(ks)
 	for _, k := range ks {
-		msg += fmt.Sprintf("\t%s: %+v\n", k[offset:], task[k])
+		msg += ti + fmt.Sprintf("\t%s: %+v\n", k[offset:], task[k])
 	}
 	return msg
 }
@@ -581,6 +582,11 @@ func processTask(ch chan error, db *sql.DB, idx, retry int, debug, dryRun bool, 
 				ch <- err
 			}
 		}()
+		if err != nil {
+			lib.Logf("task #%d failed, so not marking it as done\n", idx)
+			lib.Logf("%s\n", prettyPrintTask(idx, task))
+			return
+		}
 		delete(gProcessing, idx)
 		_, ok := gTaskIndices[taskName]
 		if ok {
@@ -593,7 +599,7 @@ func processTask(ch chan error, db *sql.DB, idx, retry int, debug, dryRun bool, 
 	}()
 	if debug {
 		lib.Logf("starting task #%d, details:\n", idx)
-		lib.Logf("%s\n", prettyPrintTask(task))
+		lib.Logf("%s\n", prettyPrintTask(idx, task))
 	}
 	dtStart := time.Now()
 	if dryRun {
@@ -602,7 +608,7 @@ func processTask(ch chan error, db *sql.DB, idx, retry int, debug, dryRun bool, 
 		for trial := 0; trial <= retry; trial++ {
 			if trial > 0 {
 				lib.Logf("retry #%d for task #%d, details:\n", retry, idx)
-				lib.Logf("%s\n", prettyPrintTask(task))
+				lib.Logf("%s\n", prettyPrintTask(idx, task))
 			}
 			res, skipped, err = execCommand(
 				debug,
@@ -624,7 +630,7 @@ func processTask(ch chan error, db *sql.DB, idx, retry int, debug, dryRun bool, 
 		err = fmt.Errorf("%s", msg)
 	} else {
 		lib.Logf("task #%d finished in %v (skipped or no data: %v), details:\n", idx, took, skipped)
-		lib.Logf("%s\n", prettyPrintTask(task))
+		lib.Logf("%s\n", prettyPrintTask(idx, task))
 	}
 	if debug {
 		lib.Logf("task #%d (%+v) executed (skipped or no data: %v), took: %v\noutput/stderr:\n%s\n", idx, task, skipped, dtEnd.Sub(dtStart), res)
