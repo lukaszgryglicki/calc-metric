@@ -548,7 +548,7 @@ func prettyPrintTask(idx int, task map[string]string) string {
 	var msg string
 	offset := len(gPrefix)
 	ks := []string{}
-	ti := "#" + strconv.Itoa(idx) + ":"
+	ti := "#" + strconv.Itoa(idx) + ":\n"
 	for k, v := range task {
 		if k == "TASK_NAME" {
 			msg = ti + v
