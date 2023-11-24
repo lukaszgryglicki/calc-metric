@@ -43,7 +43,7 @@ Those parameters are optional:
 - `V3_PPT` - `Per-Project-Tables` - means - create tables with `_project_slug` added to their name, we can consider using this for speedup.
 - `V3_GUESS_TYPE` - attempt to guess DB type when not specified.
 - `V3_INDEXED_COLUMNS` - specify comma separated list of columns where you want to add extra indices.
-- `V3_DROP` - drop destination table if exists. This is to support data cleanup.
+- `V3_DROP` - drop destination table if exists. This is to support data cleanup. Drop happens unconditionally - no matter if the new calculation is succesfull ro not - thsi is to drop the full table due to schema changes or other serious cleanup needed. Use with caution.
 - `V3_DELETE` - `tr,ps,df,dt` - drop data from destination table for current calculation: each value `tr,ps,df,dt` specifies if `time_range, project_slug, date_from, date_to` keys should be used for deleting. This is to support data cleanup.
 - `V3_CLEANUP` - cleanup previous calculations for this time range and project slug *only* after successful calculations of current status.
 - `V3_SQL_PATH` - path to metric SQL files, `./sql/` if not specified.
