@@ -83,6 +83,7 @@ This program uses the following environment variables:
 - `V3_THREADS` - specify number of threads to run in parallel (`sync` will invoke up to that many of `calcmetric` calls in parallel). Empty or zero or negative number will default to numbe rof CPU cores available.
 - `V3_HEARTBEAT` - specify number of seconds for heartbeat.
 - `V3_DRY_RUN` - run in dry-run mode - it will do all, excluding the actual task executions. It will assume they succeeded.
+- `V3_RETRY` - set number of `calcmetric` retrials in case of error. Defaults to 0.
 
 
 YAML file fields descripution:

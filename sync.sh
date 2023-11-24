@@ -10,6 +10,7 @@ then
   exit 1
 fi
 export V3_HEARTBEAT=300
+export V3_RETRY=2
 # export V3_DRY_RUN=y
 # export V3_YAML_PATH='./'
 # export V3_BIN_PATH='./'

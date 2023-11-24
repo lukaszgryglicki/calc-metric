@@ -433,6 +433,20 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 	gMtx = &snc.Mutex{}
 	gProcessing = make(map[int]map[string]string)
 
+	// Retry
+	retry := 0
+	rs, ok := env["RETRY"]
+	if ok && rs != "" {
+		r, err := strconv.Atoi(rs)
+		if err != nil {
+			return err
+		}
+		if r > 0 {
+			retry = r
+			lib.Logf("set retry to: %d\n", retry)
+		}
+	}
+
 	// Heartbeat
 	hbi := 0
 	hb, ok := env["HEARTBEAT"]
@@ -493,7 +507,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			if i > 0 && i%50 == 0 {
 				lib.Logf("on %d/%d task\n", i, numTasks)
 			}
-			go processTask(ch, db, i, debug, dryRun, calcBin, allTasks)
+			go processTask(ch, db, i, retry, debug, dryRun, calcBin, allTasks)
 			nThreads++
 			if nThreads == thrN {
 				err := <-ch
@@ -521,7 +535,7 @@ func runTasks(db *sql.DB, metrics Metrics, debug bool, env map[string]string) er
 			if i > 0 && i%50 == 0 {
 				lib.Logf("on %d/%d task\n", i, numTasks)
 			}
-			err := processTask(nil, db, i, debug, dryRun, calcBin, allTasks)
+			err := processTask(nil, db, i, retry, debug, dryRun, calcBin, allTasks)
 			if err != nil {
 				lib.Logf("error: %+v\n", err)
 			}
@@ -548,7 +562,7 @@ func prettyPrintTask(task map[string]string) string {
 	return msg
 }
 
-func processTask(ch chan error, db *sql.DB, idx int, debug, dryRun bool, binCmd string, tasks []map[string]string) error {
+func processTask(ch chan error, db *sql.DB, idx, retry int, debug, dryRun bool, binCmd string, tasks []map[string]string) error {
 	var (
 		res     string
 		skipped bool
@@ -585,11 +599,20 @@ func processTask(ch chan error, db *sql.DB, idx int, debug, dryRun bool, binCmd 
 	if dryRun {
 		res, skipped, err = "dry-run", false, nil
 	} else {
-		res, skipped, err = execCommand(
-			debug,
-			[]string{binCmd},
-			task,
-		)
+		for trial := 0; trial <= retry; trial++ {
+			if trial > 0 {
+				lib.Logf("retry #%d for task #%d, details:\n", retry, idx)
+				lib.Logf("%s\n", prettyPrintTask(task))
+			}
+			res, skipped, err = execCommand(
+				debug,
+				[]string{binCmd},
+				task,
+			)
+			if err == nil {
+				break
+			}
+		}
 	}
 	dtEnd := time.Now()
 	took := dtEnd.Sub(dtStart)
